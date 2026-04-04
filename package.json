@@ -1,0 +1,31 @@
+{
+  "name": "channel-attribution",
+  "version": "1.0.0",
+  "description": "Channel utilisation & revenue attribution system",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node scripts/seed.js",
+    "db:schema": "psql $DATABASE_URL -f src/db/schema.sql",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["channel-attribution", "adsense", "revenue"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "bullmq": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.0",
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.0"
+  }
+}

@@ -1,0 +1,37 @@
+# ── Dependencies ──────────────────────────────────────────
+node_modules/
+
+# ── Environment & Secrets ─────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── Build / Cache ─────────────────────────────────────────
+dist/
+build/
+.cache/
+coverage/
+
+# ── OS & Editor ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ── Netlify ───────────────────────────────────────────────
+.netlify
+
+# ── Misc ──────────────────────────────────────────────────
+*.png
+*.jpg
+*.jpeg
+Screenshot*

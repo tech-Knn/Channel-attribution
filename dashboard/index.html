@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Channel Attribution Dashboard</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f0f;
+  --card: #1a1a2e;
+  --card-hover: #1f1f35;
+  --accent: #00d4ff;
+  --accent-dim: rgba(0, 212, 255, 0.15);
+  --text: #e0e0e0;
+  --text-dim: #888;
+  --text-bright: #fff;
+  --green: #00e676;
+  --yellow: #ffd600;
+  --red: #ff5252;
+  --grey: #666;
+  --border: rgba(255,255,255,0.06);
+  --shadow: 0 2px 12px rgba(0,0,0,0.4);
+  --radius: 10px;
+  --transition: 0.2s ease;
+}
+
+html { font-size: 14px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(15,15,15,0.95);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header h1 .logo {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.health-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--grey);
+  transition: background var(--transition);
+}
+.health-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.health-dot.err { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.refresh-indicator {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.refresh-indicator.active { opacity: 1; }
+.refresh-ring {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Container */
+.container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+
+/* Summary Cards */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.summary-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  transition: transform var(--transition), border-color var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.summary-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0,212,255,0.2);
+}
+.summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0.6;
+}
+.summary-card .label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.summary-card .value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}
+.summary-card .sub {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--card) 25%, #252540 50%, var(--card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+.skeleton-text { height: 14px; width: 60%; margin: 4px 0; }
+.skeleton-value { height: 28px; width: 80px; margin: 8px 0; }
+.skeleton-row { height: 42px; width: 100%; margin: 4px 0; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all var(--transition);
+}
+.tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+.tab-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  box-shadow: 0 0 12px rgba(0,212,255,0.1);
+}
+
+/* Tab Panels */
+.tab-panel {
+  display: none;
+  animation: fadeIn 0.25s ease;
+}
+.tab-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Tables */
+.table-wrap {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.table-toolbar h3 { font-size: 0.95rem; font-weight: 600; color: var(--text-bright); }
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+  white-space: nowrap;
+  user-select: none;
+}
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--accent); }
+th .sort-arrow { font-size: 0.6rem; margin-left: 4px; opacity: 0.5; }
+th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+td {
+  padding: 10px 16px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tr:hover td { background: rgba(255,255,255,0.02); }
+tr:last-child td { border-bottom: none; }
+
+.mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem; }
+.currency { color: var(--green); font-weight: 600; }
+.url-cell {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.url-cell a { color: var(--accent); text-decoration: none; }
+.url-cell a:hover { text-decoration: underline; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.badge-active { background: rgba(0,230,118,0.15); color: var(--green); }
+.badge-idle { background: rgba(255,214,0,0.15); color: var(--yellow); }
+.badge-disapproved { background: rgba(255,82,82,0.15); color: var(--red); }
+.badge-expired { background: rgba(102,102,102,0.2); color: var(--grey); }
+.badge-assigned { background: var(--accent-dim); color: var(--accent); }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
+.pagination .info { font-size: 0.75rem; color: var(--text-dim); }
+.pagination .btns { display: flex; gap: 6px; }
+.page-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* Timeline bars */
+.timeline-bar {
+  height: 6px;
+  background: rgba(0,212,255,0.2);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 80px;
+}
+.timeline-bar .fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Alerts */
+.alert-list { display: flex; flex-direction: column; gap: 10px; }
+.alert-item {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: border-color var(--transition);
+}
+.alert-item:hover { border-color: rgba(255,255,255,0.1); }
+.alert-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.alert-icon.warn { background: rgba(255,214,0,0.15); }
+.alert-icon.error { background: rgba(255,82,82,0.15); }
+.alert-icon.info { background: var(--accent-dim); }
+.alert-body { flex: 1; }
+.alert-body .title { font-size: 0.85rem; font-weight: 600; color: var(--text-bright); }
+.alert-body .desc { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+.alert-body .time { font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; }
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+.empty-state .icon { font-size: 2rem; margin-bottom: 12px; opacity: 0.5; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { padding: 12px; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .tabs { flex-wrap: wrap; }
+  .tab-btn { min-width: 45%; }
+  td, th { padding: 8px 10px; font-size: 0.75rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="logo"></span> Channel Attribution</h1>
+  <div class="header-right">
+    <div class="refresh-indicator" id="refreshIndicator">
+      <span class="refresh-ring"></span>Refreshing…
+    </div>
+    <span style="font-size:0.75rem;color:var(--text-dim)" id="lastUpdate"></span>
+    <div class="health-dot" id="healthDot" title="API Health"></div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Summary Cards -->
+  <div class="summary-grid" id="summaryGrid">
+    <div class="summary-card"><div class="label">Total Revenue (Today)</div><div class="value" id="totalRevenue">—</div><div class="sub" id="revenueSub"></div></div>
+    <div class="summary-card"><div class="label">Active Channels</div><div class="value" id="activeChannels">—</div></div>
+    <div class="summary-card"><div class="label">Idle Channels</div><div class="value" id="idleChannels">—</div></div>
+    <div class="summary-card"><div class="label">Articles Assigned</div><div class="value" id="articlesAssigned">—</div></div>
+    <div class="summary-card"><div class="label">Queue Backlog</div><div class="value" id="queueBacklog">—</div><div class="sub" id="backlogSub"></div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="revenue">💰 Revenue</button>
+    <button class="tab-btn" data-tab="channels">📡 Channels</button>
+    <button class="tab-btn" data-tab="assignments">📋 Assignments</button>
+    <button class="tab-btn" data-tab="alerts">⚠️ Alerts</button>
+  </div>
+
+  <!-- Revenue Tab -->
+  <div class="tab-panel active" id="tab-revenue">
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <h3>Revenue by Article</h3>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="article_id">Article ID <span class="sort-arrow">▲</span></th>
+              <th>URL</th>
+              <th>Channel</th>
+              <th class="sortable" data-sort="impressions">Impressions <span class="sort-arrow">▲</span></th>
+              <th class="sortable" data-sort="clicks">Clicks <span class="sort-arrow">▲</span></th>
+              <th class="sortable sorted" data-sort="revenue">Revenue <span class="sort-arrow">▼</span></th>
+              <th class="sortable" data-sort="rpm">RPM <span class="sort-arrow">▲</span></th>
+            </tr>
+          </thead>
+          <tbody id="revenueBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="revenuePagination"></div>
+    </div>
+  </div>
+
+  <!-- Channels Tab -->
+  <div class="tab-panel" id="tab-channels">
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <h3>All Channels</h3>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Channel ID</th>
+              <th>Status</th>
+              <th>Idle Time</th>
+              <th>Current Article</th>
+              <th>Total Articles</th>
+              <th>Total Revenue</th>
+            </tr>
+          </thead>
+          <tbody id="channelsBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="channelsPagination"></div>
+    </div>
+  </div>
+
+  <!-- Assignments Tab -->
+  <div class="tab-panel" id="tab-assignments">
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <h3>Active Assignments</h3>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Channel</th>
+              <th>Article</th>
+              <th>Started</th>
+              <th>Duration</th>
+              <th>Progress</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="assignmentsBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <h3>Recent Expired / Completed</h3>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Channel</th>
+                <th>Article</th>
+                <th>Duration</th>
+                <th>Revenue</th>
+                <th>Status</th>
+                <th>Ended</th>
+              </tr>
+            </thead>
+            <tbody id="expiredBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts Tab -->
+  <div class="tab-panel" id="tab-alerts">
+    <div class="alert-list" id="alertsList"></div>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+
+// State
+const state = {
+  revenuePage: 1,
+  revenueSort: 'revenue',
+  revenueOrder: 'desc',
+  channelsPage: 1,
+  limit: 20,
+};
+
+// Utils
+function fmt(n) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString('en-US');
+}
+function fmtCurrency(n) {
+  if (n == null) return '$0.00';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const d = Date.now() - new Date(ts).getTime();
+  if (d < 0) return 'just now';
+  const mins = Math.floor(d / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ' + (mins % 60) + 'm ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+function duration(start, end) {
+  const ms = (end ? new Date(end) : new Date()) - new Date(start);
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return mins + 'm';
+  const hrs = Math.floor(mins / 60);
+  return hrs + 'h ' + (mins % 60) + 'm';
+}
+function statusBadge(status) {
+  const s = (status || '').toLowerCase();
+  const cls = s === 'active' || s === 'assigned' ? 'badge-active'
+    : s === 'idle' ? 'badge-idle'
+    : s === 'disapproved' ? 'badge-disapproved'
+    : s === 'expired' || s === 'completed' ? 'badge-expired'
+    : 'badge-idle';
+  return `<span class="badge ${cls}">${status || 'unknown'}</span>`;
+}
+function escHtml(s) {
+  if (s == null) return '';
+  s = String(s);
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function skeletonRows(cols, count = 5) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    html += '<tr>';
+    for (let j = 0; j < cols; j++) {
+      html += `<td><div class="skeleton skeleton-text" style="width:${50 + Math.random()*40}%"></div></td>`;
+    }
+    html += '</tr>';
+  }
+  return html;
+}
+
+async function apiFetch(path) {
+  try {
+    const res = await fetch(API + path);
+    if (!res.ok) throw new Error(res.status);
+    return await res.json();
+  } catch (e) {
+    console.warn('API error:', path, e);
+    return null;
+  }
+}
+
+// Health
+async function checkHealth() {
+  const data = await apiFetch('/health');
+  const dot = document.getElementById('healthDot');
+  if (data && data.status === 'ok') {
+    dot.className = 'health-dot ok';
+    dot.title = 'API Healthy';
+  } else {
+    dot.className = 'health-dot err';
+    dot.title = 'API Unreachable';
+  }
+}
+
+// Summary
+async function loadSummary() {
+  const [summary, idle, active, channels] = await Promise.all([
+    apiFetch('/revenue/summary'),
+    apiFetch('/channels/idle'),
+    apiFetch('/assignments/active'),
+    apiFetch('/channels?status=all'),
+  ]);
+
+  if (summary) {
+    document.getElementById('totalRevenue').textContent = fmtCurrency(summary.total_revenue || summary.totalRevenue || summary.revenue || 0);
+    const sub = document.getElementById('revenueSub');
+    if (summary.article_count || summary.articleCount) {
+      sub.textContent = `across ${fmt(summary.article_count || summary.articleCount)} articles`;
+    }
+  }
+
+  const idleList = Array.isArray(idle) ? idle : (idle?.channels || idle?.data || []);
+  const activeList = Array.isArray(active) ? active : (active?.assignments || active?.data || []);
+  const channelList = Array.isArray(channels) ? channels : (channels?.channels || channels?.data || []);
+
+  const activeCount = channelList.filter(c => (c.status || '').toLowerCase() === 'active' || (c.status || '').toLowerCase() === 'assigned').length || activeList.length;
+  document.getElementById('activeChannels').textContent = fmt(activeCount);
+  document.getElementById('idleChannels').textContent = fmt(idleList.length);
+  document.getElementById('articlesAssigned').textContent = fmt(activeList.length);
+
+  const backlog = summary?.queue_backlog ?? summary?.queueBacklog ?? summary?.backlog ?? '—';
+  document.getElementById('queueBacklog').textContent = typeof backlog === 'number' ? fmt(backlog) : backlog;
+}
+
+// Revenue table
+async function loadRevenue() {
+  const body = document.getElementById('revenueBody');
+  body.innerHTML = skeletonRows(7);
+
+  const data = await apiFetch(`/revenue/by-article?page=${state.revenuePage}&limit=${state.limit}&sort=${state.revenueSort}&order=${state.revenueOrder}`);
+  if (!data) { body.innerHTML = '<tr><td colspan="7" class="empty-state">Failed to load data</td></tr>'; return; }
+
+  const rows = Array.isArray(data) ? data : (data.data || data.articles || data.rows || []);
+  const total = data.total || data.totalCount || rows.length;
+
+  if (rows.length === 0) {
+    body.innerHTML = '<tr><td colspan="7" class="empty-state">No revenue data</td></tr>';
+  } else {
+    body.innerHTML = rows.map(r => `<tr>
+      <td class="mono">${escHtml(r.article_id || r.articleId || r.id)}</td>
+      <td class="url-cell"><a href="${escHtml(r.url)}" target="_blank" title="${escHtml(r.url)}">${escHtml(r.url ? r.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 45) : '—')}</a></td>
+      <td class="mono">${escHtml(r.channel_id || r.channelId || r.channel || '—')}</td>
+      <td>${fmt(r.impressions)}</td>
+      <td>${fmt(r.clicks)}</td>
+      <td class="currency">${fmtCurrency(r.revenue)}</td>
+      <td>${r.rpm != null ? fmtCurrency(r.rpm) : '—'}</td>
+    </tr>`).join('');
+  }
+
+  renderPagination('revenuePagination', state.revenuePage, Math.ceil(total / state.limit) || 1, total, p => {
+    state.revenuePage = p;
+    loadRevenue();
+  });
+}
+
+// Channels table
+async function loadChannels() {
+  const body = document.getElementById('channelsBody');
+  body.innerHTML = skeletonRows(6);
+
+  const [channelsData, revenueData] = await Promise.all([
+    apiFetch(`/channels?page=${state.channelsPage}&limit=${state.limit}`),
+    apiFetch('/revenue/by-channel?page=1&limit=100'),
+  ]);
+
+  const channels = channelsData ? (Array.isArray(channelsData) ? channelsData : (channelsData.data || channelsData.channels || [])) : [];
+  const revByChannel = {};
+  if (revenueData) {
+    const revRows = Array.isArray(revenueData) ? revenueData : (revenueData.data || revenueData.channels || []);
+    revRows.forEach(r => {
+      revByChannel[r.channel_id || r.channelId || r.id] = r;
+    });
+  }
+
+  if (channels.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No channels found</td></tr>';
+  } else {
+    body.innerHTML = channels.map(c => {
+      const id = c.channel_id || c.channelId || c.id;
+      const rev = revByChannel[id];
+      return `<tr>
+        <td class="mono">${escHtml(id)}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${c.idle_since || c.idleSince ? timeAgo(c.idle_since || c.idleSince) : '—'}</td>
+        <td class="mono">${escHtml(c.current_article || c.currentArticle || c.article_id || '—')}</td>
+        <td>${fmt(c.total_articles || c.totalArticles || rev?.article_count || 0)}</td>
+        <td class="currency">${fmtCurrency(c.total_revenue || c.totalRevenue || rev?.total_revenue || rev?.revenue || 0)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  const total = channelsData?.total || channels.length;
+  renderPagination('channelsPagination', state.channelsPage, Math.ceil(total / state.limit) || 1, total, p => {
+    state.channelsPage = p;
+    loadChannels();
+  });
+}
+
+// Assignments
+async function loadAssignments() {
+  const body = document.getElementById('assignmentsBody');
+  const expBody = document.getElementById('expiredBody');
+  body.innerHTML = skeletonRows(6, 3);
+  expBody.innerHTML = skeletonRows(6, 3);
+
+  const [activeData, expiredData] = await Promise.all([
+    apiFetch('/assignments/active'),
+    apiFetch('/articles?status=expired'),
+  ]);
+
+  const actives = activeData ? (Array.isArray(activeData) ? activeData : (activeData.data || activeData.assignments || [])) : [];
+  const expired = expiredData ? (Array.isArray(expiredData) ? expiredData : (expiredData.data || expiredData.articles || [])) : [];
+
+  if (actives.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No active assignments</td></tr>';
+  } else {
+    const maxDur = 3600000; // 1h baseline
+    body.innerHTML = actives.map(a => {
+      const start = a.assigned_at || a.assignedAt || a.started_at || a.startedAt || a.created_at;
+      const elapsed = Date.now() - new Date(start).getTime();
+      const pct = Math.min(100, (elapsed / maxDur) * 100);
+      return `<tr>
+        <td class="mono">${escHtml(a.channel_id || a.channelId)}</td>
+        <td class="mono">${escHtml(a.article_id || a.articleId)}</td>
+        <td>${start ? new Date(start).toLocaleTimeString() : '—'}</td>
+        <td>${start ? duration(start) : '—'}</td>
+        <td><div class="timeline-bar"><div class="fill" style="width:${pct}%"></div></div></td>
+        <td>${statusBadge(a.status || 'active')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  if (expired.length === 0) {
+    expBody.innerHTML = '<tr><td colspan="6" class="empty-state">No recent expired articles</td></tr>';
+  } else {
+    expBody.innerHTML = expired.slice(0, 20).map(a => `<tr>
+      <td class="mono">${escHtml(a.channel_id || a.channelId || '—')}</td>
+      <td class="mono">${escHtml(a.article_id || a.articleId || a.id)}</td>
+      <td>${a.assigned_at && a.expired_at ? duration(a.assigned_at || a.assignedAt, a.expired_at || a.expiredAt) : '—'}</td>
+      <td class="currency">${fmtCurrency(a.revenue || 0)}</td>
+      <td>${statusBadge(a.status || 'expired')}</td>
+      <td>${timeAgo(a.expired_at || a.expiredAt || a.updated_at)}</td>
+    </tr>`).join('');
+  }
+}
+
+// Alerts
+async function loadAlerts() {
+  const list = document.getElementById('alertsList');
+  list.innerHTML = '<div class="skeleton skeleton-row"></div>'.repeat(3);
+
+  const [expired, unattributed, channels] = await Promise.all([
+    apiFetch('/articles?status=expired'),
+    apiFetch('/revenue/unattributed'),
+    apiFetch('/channels?status=disapproved'),
+  ]);
+
+  const alerts = [];
+
+  // Expired articles
+  const expList = expired ? (Array.isArray(expired) ? expired : (expired.data || expired.articles || [])) : [];
+  expList.slice(0, 5).forEach(a => {
+    alerts.push({
+      type: 'warn',
+      icon: '⏰',
+      title: `Article expired: ${a.article_id || a.articleId || a.id}`,
+      desc: a.url ? a.url.slice(0, 60) : 'No URL',
+      time: timeAgo(a.expired_at || a.expiredAt || a.updated_at),
+    });
+  });
+
+  // Unattributed revenue
+  const unattr = unattributed ? (Array.isArray(unattributed) ? unattributed : (unattributed.data || [unattributed])) : [];
+  unattr.forEach(u => {
+    if (u && (u.total || u.revenue || u.amount)) {
+      alerts.push({
+        type: 'error',
+        icon: '💸',
+        title: `Unattributed revenue: ${fmtCurrency(u.total || u.revenue || u.amount)}`,
+        desc: `${fmt(u.count || u.events || 0)} orphan revenue events`,
+        time: 'ongoing',
+      });
+    }
+  });
+
+  // Disapproved channels
+  const disChans = channels ? (Array.isArray(channels) ? channels : (channels.data || channels.channels || [])) : [];
+  disChans.filter(c => (c.status || '').toLowerCase() === 'disapproved').slice(0, 5).forEach(c => {
+    alerts.push({
+      type: 'error',
+      icon: '🚫',
+      title: `Channel disapproved: ${c.channel_id || c.channelId || c.id}`,
+      desc: c.reason || 'Policy violation',
+      time: timeAgo(c.updated_at || c.disapproved_at),
+    });
+  });
+
+  if (alerts.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">✅</div>No alerts — everything looks good!</div>';
+  } else {
+    list.innerHTML = alerts.map(a => `<div class="alert-item">
+      <div class="alert-icon ${a.type}">${a.icon}</div>
+      <div class="alert-body">
+        <div class="title">${escHtml(a.title)}</div>
+        <div class="desc">${escHtml(a.desc)}</div>
+        <div class="time">${escHtml(a.time)}</div>
+      </div>
+    </div>`).join('');
+  }
+}
+
+// Pagination renderer
+function renderPagination(id, page, totalPages, totalItems, onPage) {
+  const el = document.getElementById(id);
+  const from = ((page - 1) * state.limit) + 1;
+  const to = Math.min(page * state.limit, totalItems);
+  el.innerHTML = `
+    <div class="info">${from}–${to} of ${fmt(totalItems)}</div>
+    <div class="btns">
+      <button class="page-btn" ${page <= 1 ? 'disabled' : ''} data-page="${page-1}">← Prev</button>
+      <button class="page-btn" ${page >= totalPages ? 'disabled' : ''} data-page="${page+1}">Next →</button>
+    </div>
+  `;
+  el.querySelectorAll('.page-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = parseInt(btn.dataset.page);
+      if (p >= 1 && p <= totalPages) onPage(p);
+    });
+  });
+}
+
+// Sorting
+document.querySelectorAll('th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const sort = th.dataset.sort;
+    if (state.revenueSort === sort) {
+      state.revenueOrder = state.revenueOrder === 'desc' ? 'asc' : 'desc';
+    } else {
+      state.revenueSort = sort;
+      state.revenueOrder = 'desc';
+    }
+    state.revenuePage = 1;
+    // Update UI
+    document.querySelectorAll('#tab-revenue th.sortable').forEach(h => {
+      h.classList.remove('sorted');
+      h.querySelector('.sort-arrow').textContent = '▲';
+    });
+    th.classList.add('sorted');
+    th.querySelector('.sort-arrow').textContent = state.revenueOrder === 'desc' ? '▼' : '▲';
+    loadRevenue();
+  });
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    // Load data for the tab
+    const tab = btn.dataset.tab;
+    if (tab === 'revenue') loadRevenue();
+    else if (tab === 'channels') loadChannels();
+    else if (tab === 'assignments') loadAssignments();
+    else if (tab === 'alerts') loadAlerts();
+  });
+});
+
+// Refresh all
+async function refreshAll() {
+  const indicator = document.getElementById('refreshIndicator');
+  indicator.classList.add('active');
+  await Promise.all([
+    checkHealth(),
+    loadSummary(),
+  ]);
+  // Load active tab
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (activeTab === 'revenue') await loadRevenue();
+  else if (activeTab === 'channels') await loadChannels();
+  else if (activeTab === 'assignments') await loadAssignments();
+  else if (activeTab === 'alerts') await loadAlerts();
+
+  document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  setTimeout(() => indicator.classList.remove('active'), 800);
+}
+
+// Initial load
+refreshAll();
+// Auto-refresh every 60s
+setInterval(refreshAll, 60000);
+</script>
+</body>
+</html>

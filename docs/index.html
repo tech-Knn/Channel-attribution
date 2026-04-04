@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Channel Attribution System — Complete Documentation</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a2e;
+    --border: #2a2a3e;
+    --text: #e0e0e8;
+    --text-dim: #8888a0;
+    --accent: #00d4ff;
+    --accent-dim: #00d4ff22;
+    --green: #00e676;
+    --yellow: #ffd740;
+    --red: #ff5252;
+    --orange: #ff9100;
+    --purple: #b388ff;
+    --code-bg: #0d0d18;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 15px; }
+  .layout { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 300px; background: var(--surface); border-right: 1px solid var(--border);
+    position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; padding: 24px 0; z-index: 100;
+  }
+  .sidebar-title { font-size: 14px; font-weight: 700; color: var(--accent); padding: 0 24px; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .sidebar-subtitle { font-size: 11px; color: var(--text-dim); padding: 0 24px; margin-bottom: 20px; }
+  .nav-group { margin-bottom: 14px; }
+  .nav-group-label { font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; padding: 0 24px; margin-bottom: 4px; }
+  .nav-link { display: block; padding: 4px 24px 4px 36px; color: var(--text-dim); text-decoration: none; font-size: 12.5px; transition: all 0.15s; border-left: 2px solid transparent; }
+  .nav-link:hover { color: var(--text); background: var(--accent-dim); border-left-color: var(--accent); }
+  .nav-link.sub { padding-left: 48px; font-size: 11.5px; }
+
+  /* Main */
+  .main { margin-left: 300px; flex: 1; padding: 48px 64px; max-width: 920px; }
+
+  /* Typography */
+  h1 { font-size: 36px; font-weight: 800; margin-bottom: 8px; color: #fff; }
+  h1 .version { font-size: 14px; color: var(--accent); font-weight: 500; vertical-align: middle; margin-left: 12px; background: var(--accent-dim); padding: 2px 10px; border-radius: 12px; }
+  .hero-sub { font-size: 16px; color: var(--text-dim); margin-bottom: 16px; }
+  .hero-stats { display: flex; gap: 32px; margin-bottom: 40px; padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .hero-stat .num { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .hero-stat .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  h2 { font-size: 24px; font-weight: 700; margin-top: 56px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); color: #fff; }
+  h2 .emoji { margin-right: 8px; }
+  h3 { font-size: 18px; font-weight: 600; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  h4 { font-size: 15px; font-weight: 600; margin-top: 24px; margin-bottom: 8px; color: var(--text); }
+  h5 { font-size: 13px; font-weight: 600; margin-top: 16px; margin-bottom: 6px; color: var(--purple); text-transform: uppercase; letter-spacing: 0.5px; }
+  p { margin-bottom: 16px; }
+  strong { color: #fff; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { margin-bottom: 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* Code */
+  code { font-family: var(--mono); font-size: 13px; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: none; padding: 0; color: var(--text); }
+  .code-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; background: var(--surface); }
+  tr:hover td { background: var(--surface); }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-weight: 600; color: #fff; margin-bottom: 8px; font-size: 15px; }
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+  /* Flow diagrams */
+  .flow { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 20px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; color: var(--text-dim); }
+  .flow .hl { color: var(--accent); font-weight: 600; }
+  .flow .g { color: var(--green); }
+  .flow .y { color: var(--yellow); }
+  .flow .r { color: var(--red); }
+  .flow .p { color: var(--purple); }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-green { background: #00e67622; color: var(--green); }
+  .badge-yellow { background: #ffd74022; color: var(--yellow); }
+  .badge-red { background: #ff525222; color: var(--red); }
+  .badge-blue { background: var(--accent-dim); color: var(--accent); }
+  .badge-purple { background: #b388ff22; color: var(--purple); }
+
+  /* Callouts */
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-dim); padding: 14px 18px; border-radius: 0 6px 6px 0; margin-bottom: 20px; font-size: 14px; }
+  .callout.warn { border-left-color: var(--yellow); background: #ffd74011; }
+  .callout.danger { border-left-color: var(--red); background: #ff525211; }
+  .callout.success { border-left-color: var(--green); background: #00e67611; }
+  .callout-title { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  /* Step numbers */
+  .step { display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-start; }
+  .step-num { width: 28px; height: 28px; background: var(--accent-dim); color: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .step-content { flex: 1; }
+  .step-content strong { display: block; margin-bottom: 4px; }
+
+  /* Method badges for API */
+  .method { display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: var(--mono); font-size: 12px; font-weight: 700; margin-right: 8px; }
+  .method-get { background: #00e67622; color: var(--green); }
+  .method-post { background: #00d4ff22; color: var(--accent); }
+  .method-put { background: #ffd74022; color: var(--yellow); }
+  .method-delete { background: #ff525222; color: var(--red); }
+
+  .endpoint { font-family: var(--mono); font-size: 14px; color: #fff; font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 24px 20px; }
+    .card-grid { grid-template-columns: 1fr; }
+    .hero-stats { flex-wrap: wrap; gap: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="sidebar">
+  <div class="sidebar-title">⚡ Channel Attribution</div>
+  <div class="sidebar-subtitle">Complete System Documentation</div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Overview</div>
+    <a href="#problem" class="nav-link">The Problem</a>
+    <a href="#solution" class="nav-link">The Solution</a>
+    <a href="#how-it-thinks" class="nav-link">How the System Thinks</a>
+    <a href="#architecture" class="nav-link">Architecture</a>
+    <a href="#tech-stack" class="nav-link">Tech Stack & Decisions</a>
+    <a href="#data-model" class="nav-link">Data Model Overview</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Core Flows (Detailed)</div>
+    <a href="#flow-assignment" class="nav-link">1. Auto-Assignment</a>
+    <a href="#flow-assignment-detail" class="nav-link sub">↳ Step-by-Step</a>
+    <a href="#flow-assignment-edge" class="nav-link sub">↳ Edge Cases</a>
+    <a href="#flow-channel-state" class="nav-link">2. Channel State Changes</a>
+    <a href="#flow-channel-idle" class="nav-link sub">↳ Idle Transition</a>
+    <a href="#flow-channel-disapproved" class="nav-link sub">↳ Disapproval</a>
+    <a href="#flow-revenue" class="nav-link">3. Revenue Attribution</a>
+    <a href="#flow-revenue-pull" class="nav-link sub">↳ AFS Pull Cycle</a>
+    <a href="#flow-revenue-matching" class="nav-link sub">↳ Revenue Matching</a>
+    <a href="#flow-revenue-edge" class="nav-link sub">↳ Edge Cases</a>
+    <a href="#flow-expiry" class="nav-link">4. 3-Day Expiry</a>
+    <a href="#flow-expiry-detail" class="nav-link sub">↳ Detection Logic</a>
+    <a href="#flow-expiry-reclaim" class="nav-link sub">↳ Reclamation</a>
+    <a href="#flow-rotation" class="nav-link">5. Channel Rotation Lifecycle</a>
+    <a href="#flow-waiting" class="nav-link">6. Waiting Queue</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">API Reference</div>
+    <a href="#api-overview" class="nav-link">API Overview</a>
+    <a href="#api-articles" class="nav-link">Articles Endpoints</a>
+    <a href="#api-channels" class="nav-link">Channels Endpoints</a>
+    <a href="#api-assignments" class="nav-link">Assignments Endpoints</a>
+    <a href="#api-revenue" class="nav-link">Revenue Endpoints</a>
+    <a href="#api-health" class="nav-link">Health Check</a>
+    <a href="#api-errors" class="nav-link">Error Handling</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Database</div>
+    <a href="#db-channels" class="nav-link">channels table</a>
+    <a href="#db-articles" class="nav-link">articles table</a>
+    <a href="#db-assignments" class="nav-link">assignments table</a>
+    <a href="#db-revenue" class="nav-link">revenue_events table</a>
+    <a href="#db-log" class="nav-link">channel_log table</a>
+    <a href="#db-views" class="nav-link">Materialized Views</a>
+    <a href="#db-indexes" class="nav-link">Indexes & Performance</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Redis</div>
+    <a href="#redis-idle" class="nav-link">Idle Channel Queue</a>
+    <a href="#redis-waiting" class="nav-link">Waiting Article Queue</a>
+    <a href="#redis-state" class="nav-link">Assignment State Store</a>
+    <a href="#redis-bullmq" class="nav-link">BullMQ Queues</a>
+    <a href="#redis-recovery" class="nav-link">Recovery from Redis Loss</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Workers</div>
+    <a href="#worker-matching" class="nav-link">Matching Engine</a>
+    <a href="#worker-channel" class="nav-link">Channel State Worker</a>
+    <a href="#worker-revenue" class="nav-link">Revenue Attribution</a>
+    <a href="#worker-expiry" class="nav-link">Expiry Worker</a>
+    <a href="#worker-afs" class="nav-link">AFS Client</a>
+    <a href="#worker-slack" class="nav-link">Slack Notifier</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Operations</div>
+    <a href="#monitoring" class="nav-link">Monitoring & Alerts</a>
+    <a href="#recovery" class="nav-link">Failure & Recovery</a>
+    <a href="#deployment" class="nav-link">Deployment</a>
+    <a href="#scaling" class="nav-link">Scaling Path</a>
+    <a href="#production" class="nav-link">Production Checklist</a>
+  </div>
+</nav>
+
+<main class="main">
+
+<h1>Channel Attribution System <span class="version">v1.0</span></h1>
+<p class="hero-sub">Automatic channel allocation, rotation, reclamation, and per-article revenue tracking for AFS at scale.</p>
+
+<div class="hero-stats">
+  <div class="hero-stat"><div class="num">~2,000</div><div class="label">Channels Managed</div></div>
+  <div class="hero-stat"><div class="num">~10,000</div><div class="label">Articles / Month</div></div>
+  <div class="hero-stat"><div class="num">&lt;1s</div><div class="label">Assignment Time</div></div>
+  <div class="hero-stat"><div class="num">15min</div><div class="label">Revenue Sync</div></div>
+  <div class="hero-stat"><div class="num">72h</div><div class="label">Expiry Window</div></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="problem"><span class="emoji">🎯</span> The Problem</h2>
+
+<p>We run AFS (AdSense for Search) across a content network. Google gives us <strong>custom channels</strong> — identifiers we attach to ad requests so revenue can be tracked. We have approximately 2,000 of these channels.</p>
+
+<p>We publish roughly 10,000 articles per month. Each article should have a channel assigned so we know exactly how much revenue it generates. But:</p>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-title">🔴 Problem 1: Idle Channels</div>
+    <p>At any given time, hundreds of channels sit idle — disapproved by Google, no longer delivering ads, or simply never assigned to an article. Every hour an idle channel exists, potential revenue is lost.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🔴 Problem 2: Dead Articles Hogging Channels</div>
+    <p>Some articles receive a channel but never generate traffic. These articles hold their channel indefinitely, preventing it from being used by an article that could actually earn money.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🔴 Problem 3: No Clean Attribution</div>
+    <p>Without systematic tracking of which channel was assigned to which article and when, revenue reporting is unreliable. We can't confidently say "Article X earned $Y" because channel assignments are inconsistent and untracked.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🔴 Problem 4: Manual Process</div>
+    <p>Previously, channel assignments were done manually or semi-manually. At 10,000 articles/month, this doesn't scale. Human error leads to missed assignments, duplicate assignments, and slow response to channel status changes.</p>
+  </div>
+</div>
+
+<h3>The Numbers</h3>
+<table>
+  <tr><th>Metric</th><th>Value</th><th>Implication</th></tr>
+  <tr><td>Total channels</td><td>~2,000</td><td>Not enough for 1:1 permanent assignment to all articles</td></tr>
+  <tr><td>Articles per month</td><td>~10,000</td><td>5x more articles than channels → must rotate</td></tr>
+  <tr><td>Avg article earning life</td><td>3-7 days</td><td>Most revenue comes in the first few days</td></tr>
+  <tr><td>Zero-traffic rate</td><td>~20-30%</td><td>Significant portion of articles never earn anything</td></tr>
+  <tr><td>Channel disapproval rate</td><td>~5-10%</td><td>Google periodically disapproves channels</td></tr>
+  <tr><td>Revenue per idle channel-hour</td><td>Lost opportunity</td><td>Every idle hour = money left on the table</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="solution"><span class="emoji">💡</span> The Solution</h2>
+
+<p>This system automates the entire channel lifecycle — from assignment to revenue tracking to reclamation. No human intervention needed for normal operations.</p>
+
+<h3>Three Parallel Systems</h3>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>Channel Watcher</strong>
+    Continuously monitors all 2,000 channels. The instant a channel changes state — goes idle, gets disapproved, comes back active — the system reacts. Idle channels enter the assignment queue. Disapproved channels trigger alerts. No polling delay; event-driven via BullMQ.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>Auto-Assignment Engine</strong>
+    When a new article is published, the Matching Engine instantly finds the best idle channel. "Best" means the channel that has been idle the longest (fair round-robin). The assignment is recorded with a precise timestamp. If no channel is available, the article enters a waiting queue and gets assigned the instant one frees up.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Revenue Attribution + Expiry</strong>
+    Every 15 minutes, the system pulls revenue data from the AFS Reporting API and matches it to assignments using timestamps. Every hour, it checks for articles that have been live for 3 days with zero traffic — these get their channels reclaimed and the freed channel is immediately available for a new article.
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="how-it-thinks"><span class="emoji">🧠</span> How the System Thinks</h2>
+
+<p>The core insight is <strong>timestamp-based attribution</strong>. Every assignment is a time window:</p>
+
+<div class="callout success">
+  <div class="callout-title">The Attribution Rule</div>
+  <p><strong>Article X</strong> was assigned <strong>Channel C</strong> at <code>2026-04-01 10:00:00</code>.<br>
+  <strong>Article X</strong> was unassigned from <strong>Channel C</strong> at <code>2026-04-04 10:00:00</code>.</p>
+  <p><strong>Any revenue earned by Channel C between those two timestamps belongs to Article X.</strong></p>
+  <p>This is not a guess, not an estimate, not a statistical model. It's a deterministic record.</p>
+</div>
+
+<p>The system enforces a strict rule: <strong>one channel, one article, at any given time</strong>. A channel cannot be assigned to two articles simultaneously. This guarantees clean attribution — there's never ambiguity about which article earned the revenue.</p>
+
+<h3>Decision Tree</h3>
+<div class="flow">
+<span class="hl">New article arrives</span>
+  │
+  ├── Are there idle channels? ──<span class="g"> YES </span>──→ Assign longest-idle channel
+  │                              <span class="r"> NO  </span>──→ Add to waiting queue
+  │
+<span class="hl">Channel becomes idle</span>
+  │
+  ├── Are articles waiting? ────<span class="g"> YES </span>──→ Assign to oldest waiting article
+  │                              <span class="r"> NO  </span>──→ Channel waits in idle queue
+  │
+<span class="hl">Revenue data arrives</span> (every 15 min)
+  │
+  ├── Channel has assignment? ──<span class="g"> YES </span>──→ Attribute revenue to that article
+  │                              <span class="r"> NO  </span>──→ Flag as orphan, alert team
+  │
+<span class="hl">Article hits day 3</span> (hourly check)
+  │
+  ├── Has any impressions? ─────<span class="g"> YES </span>──→ Keep channel assigned
+  │                              <span class="r"> NO  </span>──→ Reclaim channel, expire article
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="architecture"><span class="emoji">🏗️</span> Architecture</h2>
+
+<div class="flow">
+┌─────────────────────────────────────────────────────────────────────┐
+│                          <span class="hl">INPUTS</span>                                    │
+├─────────────────┬─────────────────┬────────────────┬───────────────┤
+│ <span class="y">Article System</span>  │ <span class="y">Channel System</span>  │ <span class="y">AFS Reporting</span>  │ <span class="y">Cron Timer</span>    │
+│                 │                 │ <span class="y">API</span>            │               │
+│ Fires when a    │ Fires when a    │ Polled every   │ Triggers      │
+│ new article is  │ channel status  │ 15 minutes     │ expiry check  │
+│ published       │ changes         │ for revenue    │ every hour    │
+└────────┬────────┴────────┬────────┴───────┬────────┴──────┬────────┘
+         │                 │                │               │
+         ▼                 ▼                ▼               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     <span class="hl">BullMQ JOB QUEUES</span> (Redis)                       │
+│                                                                     │
+│  ┌─────────────────────┐  ┌──────────────────┐                     │
+│  │ article-assignment   │  │ channel-state    │                     │
+│  │ Event-driven         │  │ Event-driven     │                     │
+│  │ Concurrency: 1       │  │ Concurrency: 1   │                     │
+│  │ Retries: 3           │  │ Retries: 3       │                     │
+│  └─────────────────────┘  └──────────────────┘                     │
+│                                                                     │
+│  ┌─────────────────────┐  ┌──────────────────┐                     │
+│  │ revenue-attribution  │  │ article-expiry   │                     │
+│  │ Every 15 min         │  │ Every 1 hour     │                     │
+│  │ Concurrency: 1       │  │ Concurrency: 1   │                     │
+│  │ Retries: 3           │  │ Retries: 3       │                     │
+│  └─────────────────────┘  └──────────────────┘                     │
+└────────┬────────────────────────┬──────────────────────┬────────────┘
+         │                        │                      │
+         ▼                        ▼                      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    <span class="hl">NODE.JS WORKERS</span>                                  │
+│                                                                     │
+│  ┌───────────────────┐    ┌───────────────────┐                    │
+│  │ <span class="g">Matching Engine</span>    │    │ <span class="g">Channel State</span>      │                    │
+│  │                   │    │ <span class="g">Worker</span>             │                    │
+│  │ ZPOPMIN idle set  │    │                   │                    │
+│  │ Create assignment │    │ Handle idle →     │                    │
+│  │ Update Redis      │    │   add to queue    │                    │
+│  │ Update PostgreSQL │    │ Handle disapprove │                    │
+│  │ Log event         │    │   → Slack alert   │                    │
+│  └───────────────────┘    └───────────────────┘                    │
+│                                                                     │
+│  ┌───────────────────┐    ┌───────────────────┐                    │
+│  │ <span class="g">Revenue</span>            │    │ <span class="g">Expiry Worker</span>      │                    │
+│  │ <span class="g">Attribution</span>        │    │                   │                    │
+│  │                   │    │ Query 72-96h      │                    │
+│  │ Pull AFS API      │    │   zero-traffic    │                    │
+│  │ Match to assigns  │    │ Expire article    │                    │
+│  │ UPSERT revenue    │    │ Free channel      │                    │
+│  │ Refresh views     │    │ Reassign if       │                    │
+│  │ Flag orphans      │    │   articles wait   │                    │
+│  └───────────────────┘    └───────────────────┘                    │
+└────────┬────────────────────────┬──────────────────────┬────────────┘
+         │                        │                      │
+         ▼                        ▼                      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                <span class="hl">REDIS</span> (Hot State)                                    │
+│                                                                     │
+│  <span class="p">ca:idle_channels</span>         Sorted Set — idle channels by timestamp   │
+│  <span class="p">ca:waiting_articles</span>      Sorted Set — articles waiting for channel  │
+│  <span class="p">ca:channel_assignment:*</span>  String — channel → article mapping         │
+│  <span class="p">ca:article_channel:*</span>    String — article → channel mapping          │
+│                                                                     │
+│  Used for: sub-millisecond lookups, queue operations, job dispatch  │
+│  Rebuilt from PostgreSQL if lost (scripts/sync-redis.js)            │
+└────────┬────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                <span class="hl">POSTGRESQL</span> (Source of Truth)                          │
+│                                                                     │
+│  <span class="g">channels</span>        2,000 rows — id, status, idle_since, assigned_to   │
+│  <span class="g">articles</span>        10,000+/mo — id, url, category, status, dates      │
+│  <span class="g">assignments</span>     All mappings — article↔channel with timestamps      │
+│  <span class="g">revenue_events</span>  Per-channel revenue with attribution                │
+│  <span class="g">channel_log</span>     Full audit trail of every state change              │
+│                                                                     │
+│  <span class="y">mv_revenue_per_article</span>   Materialized — refreshed every 15 min     │
+│  <span class="y">mv_revenue_per_channel</span>   Materialized — refreshed every 15 min     │
+│                                                                     │
+│  Every record has timestamps. Nothing is deleted. Full auditability.│
+└────────┬────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                <span class="hl">REST API + DASHBOARD</span>                                  │
+│                                                                     │
+│  Express server on port 3000                                        │
+│  /api/articles     — CRUD + trigger assignments                     │
+│  /api/channels     — CRUD + status changes                          │
+│  /api/assignments  — View active/historical assignments             │
+│  /api/revenue      — Summary, per-article, per-channel, orphans     │
+│  /api/health       — PostgreSQL + Redis connectivity check          │
+│  /dashboard        — Real-time web dashboard                        │
+│  /docs             — This documentation                             │
+└─────────────────────────────────────────────────────────────────────┘
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="tech-stack"><span class="emoji">⚙️</span> Tech Stack & Decisions</h2>
+
+<table>
+  <tr><th>Component</th><th>Choice</th><th>Why This</th><th>Why Not Alternatives</th></tr>
+  <tr>
+    <td><strong>Database</strong></td>
+    <td>PostgreSQL 16</td>
+    <td>ACID transactions, materialized views for analytics, rich indexing, battle-tested at this scale</td>
+    <td>MySQL lacks materialized views. MongoDB is wrong fit for relational assignment data.</td>
+  </tr>
+  <tr>
+    <td><strong>Cache / Queue Backend</strong></td>
+    <td>Redis 7</td>
+    <td>Sorted sets for O(log N) queue ops, sub-ms lookups, BullMQ backend, single dependency for both state and jobs</td>
+    <td>Memcached has no sorted sets. Dedicated message queue adds ops overhead.</td>
+  </tr>
+  <tr>
+    <td><strong>Job Queue</strong></td>
+    <td>BullMQ</td>
+    <td>Redis-native, repeatable jobs, retries with backoff, rate limiting, concurrency control, dashboard available</td>
+    <td>Kafka is massive overkill at 2K channels. RabbitMQ adds another service. BullMQ uses existing Redis.</td>
+  </tr>
+  <tr>
+    <td><strong>Runtime</strong></td>
+    <td>Node.js</td>
+    <td>Non-blocking I/O perfect for queue workers + API. Large ecosystem. Same language front-to-back.</td>
+    <td>Python would work but Node's event loop is naturally suited for queue-worker patterns.</td>
+  </tr>
+  <tr>
+    <td><strong>API</strong></td>
+    <td>Express</td>
+    <td>Minimal, fast, well-understood. No magic.</td>
+    <td>Fastify is slightly faster but Express ecosystem is larger. Doesn't matter at our request volume.</td>
+  </tr>
+  <tr>
+    <td><strong>Dashboard</strong></td>
+    <td>Vanilla HTML/CSS/JS</td>
+    <td>Zero build step, zero dependencies, served by Express directly. Fast to iterate.</td>
+    <td>React/Vue would add build complexity for a relatively simple dashboard.</td>
+  </tr>
+</table>
+
+<div class="callout warn">
+  <div class="callout-title">What We Deliberately Excluded</div>
+  <p><strong>Kafka</strong> — We process ~700 events/day (10K articles + channel changes + revenue pulls). BullMQ handles this trivially. Kafka's operational overhead isn't justified.</p>
+  <p><strong>ClickHouse</strong> — Our analytical queries run against ~10K-50K rows. PostgreSQL with materialized views returns in &lt;100ms. ClickHouse shines at billions of rows.</p>
+  <p><strong>Kubernetes</strong> — Single Node.js process handles everything. PM2 for process management is sufficient.</p>
+  <p>We can add any of these when measured performance requires it. See <a href="#scaling">Scaling Path</a>.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="data-model"><span class="emoji">📊</span> Data Model Overview</h2>
+
+<div class="flow">
+┌──────────┐     ┌──────────────┐     ┌──────────┐
+│ <span class="g">channels</span> │────→│ <span class="hl">assignments</span>  │←────│ <span class="g">articles</span> │
+│          │     │              │     │          │
+│ id       │     │ channel_id   │     │ id       │
+│ status   │     │ article_id   │     │ status   │
+│ idle_since│    │ assigned_at  │     │ category │
+│ assigned │     │ unassigned_at│     │ url      │
+│ _to      │     │ status       │     │ pub date │
+└──────────┘     └──────┬───────┘     └──────────┘
+      │                 │
+      │                 ▼
+      │          ┌──────────────┐
+      │          │<span class="y">revenue_events</span>│
+      │          │              │
+      │          │ channel_id   │
+      │          │ article_id   │
+      │          │ impressions  │
+      │          │ clicks       │
+      │          │ revenue      │
+      │          │ period_start │
+      │          │ attributed   │
+      │          └──────────────┘
+      │
+      ▼
+┌──────────────┐
+│ <span class="p">channel_log</span>  │
+│              │
+│ channel_id   │
+│ event        │
+│ article_id   │
+│ metadata     │
+│ timestamp    │
+└──────────────┘
+
+<span class="hl">Relationships:</span>
+  • A channel has 0 or 1 active assignment at any time
+  • A channel has many historical assignments (over time)
+  • An article has 0 or 1 active assignment at any time
+  • An assignment has many revenue_events
+  • A channel has many log entries (audit trail)
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="flow-assignment"><span class="emoji">🔄</span> Flow 1: Auto-Assignment</h2>
+
+<p>This is the core flow. When a new article is published, it needs a channel immediately so it can start earning revenue from the first impression.</p>
+
+<h3 id="flow-assignment-detail">Step-by-Step Walkthrough</h3>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>Article Creation (API Layer)</strong>
+    Your publishing system sends a POST to <code>/api/articles</code> with the article's ID, URL, category, and publish date. The API inserts the article into PostgreSQL with <code>status = "pending"</code> and immediately adds a job to the <code>article-assignment</code> BullMQ queue. The API returns 201 within milliseconds — it doesn't wait for assignment.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>Job Pickup (Matching Engine Worker)</strong>
+    The Matching Engine worker is always listening on the <code>article-assignment</code> queue. It picks up the job typically within 10-50ms. It extracts the <code>articleId</code> from the job data.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Article Validation</strong>
+    The worker queries PostgreSQL to verify the article exists and is in a valid state (<code>pending</code> or <code>assigned</code>). If the article doesn't exist or is in an invalid state (e.g., already <code>expired</code>), the job is skipped with a logged reason.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <strong>Channel Selection (Redis ZPOPMIN)</strong>
+    The worker calls <code>ZPOPMIN</code> on the Redis sorted set <code>ca:idle_channels</code>. This atomically removes and returns the channel with the lowest score (= the oldest idle_since timestamp). This ensures <strong>longest-idle-first</strong> assignment — fair rotation so no channel is favored or neglected.
+    <br><br>
+    <strong>Why ZPOPMIN?</strong> It's atomic — in a concurrent environment, two workers can't grab the same channel. It's O(log N) — fast even with 2,000 channels.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-content">
+    <strong>If a channel is available:</strong>
+    <ul>
+      <li><strong>PostgreSQL:</strong> Create assignment record (article_id, channel_id, assigned_at = NOW(), status = "active")</li>
+      <li><strong>PostgreSQL:</strong> Update channel status to "assigned", set assigned_to = article_id</li>
+      <li><strong>PostgreSQL:</strong> Update article status to "assigned"</li>
+      <li><strong>Redis:</strong> Set <code>ca:channel_assignment:{channelId}</code> → articleId</li>
+      <li><strong>Redis:</strong> Set <code>ca:article_channel:{articleId}</code> → channelId</li>
+      <li><strong>PostgreSQL:</strong> Write to channel_log (event = "assigned", article_id, timestamp)</li>
+    </ul>
+    All PostgreSQL writes happen in a single operation sequence. If any step fails, the channel is returned to the idle queue.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">6</div>
+  <div class="step-content">
+    <strong>If NO channel is available (idle queue empty):</strong>
+    The article is added to the Redis sorted set <code>ca:waiting_articles</code>, scored by the current timestamp (FIFO ordering). When any channel becomes idle in the future, the system immediately checks this waiting queue and assigns automatically. The article's status remains "pending".
+  </div>
+</div>
+
+<h3 id="flow-assignment-edge">Edge Cases & Error Handling</h3>
+
+<table>
+  <tr><th>Scenario</th><th>What Happens</th><th>Recovery</th></tr>
+  <tr>
+    <td>Article doesn't exist in DB</td>
+    <td>Job skipped, logged as "article_not_found"</td>
+    <td>No retry needed — likely a race condition or invalid input</td>
+  </tr>
+  <tr>
+    <td>Article already has active assignment</td>
+    <td>Job skipped, logged as "already_assigned"</td>
+    <td>Duplicate job protection</td>
+  </tr>
+  <tr>
+    <td>Redis ZPOPMIN returns empty (no idle channels)</td>
+    <td>Article added to waiting queue</td>
+    <td>Assigned automatically when any channel becomes idle</td>
+  </tr>
+  <tr>
+    <td>PostgreSQL write fails after channel popped from Redis</td>
+    <td>Channel is pushed back to idle queue (ZADD)</td>
+    <td>BullMQ retries the job (3 attempts, exponential backoff)</td>
+  </tr>
+  <tr>
+    <td>Redis state update fails after PostgreSQL write succeeds</td>
+    <td>PostgreSQL is source of truth — next sync-redis.js run fixes Redis</td>
+    <td>Run <code>node scripts/sync-redis.js</code> or wait for next restart</td>
+  </tr>
+  <tr>
+    <td>Worker crashes mid-job</td>
+    <td>BullMQ marks job as stalled, re-queues after visibility timeout</td>
+    <td>Automatic — BullMQ handles this</td>
+  </tr>
+  <tr>
+    <td>Two articles arrive simultaneously</td>
+    <td>BullMQ processes with concurrency=1, so they're serialized</td>
+    <td>No race condition — ZPOPMIN is atomic, concurrency=1 is sequential</td>
+  </tr>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Why Concurrency = 1?</div>
+  The Matching Engine runs with <code>concurrency: 1</code> to prevent race conditions. If two jobs ran simultaneously, they could both try to ZPOPMIN the same channel (unlikely but possible with Redis pub/sub delays) or create conflicting assignments. Sequential processing at our volume (~330 articles/day = ~14/hour) adds negligible latency.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="flow-channel-state"><span class="emoji">📡</span> Flow 2: Channel State Changes</h2>
+
+<p>Channels change state for various reasons — Google disapproves them, they stop delivering, they get reactivated. The system must react to each transition correctly.</p>
+
+<h3>Channel Status Lifecycle</h3>
+<div class="flow">
+                    ┌─────────────────────────┐
+                    │                         │
+     ┌──────────────▼──────────────┐          │
+     │        <span class="g">IDLE</span>                 │          │
+     │  In Redis idle queue        │          │
+     │  Available for assignment   │          │
+     └──────────────┬──────────────┘          │
+                    │                         │
+                    │ Matching Engine assigns  │
+                    ▼                         │
+     ┌──────────────────────────────┐         │
+     │        <span class="hl">ASSIGNED</span>             │         │
+     │  Earning revenue for article │         │
+     │  Active assignment exists    │         │
+     └───┬──────────┬──────────┬───┘         │
+         │          │          │              │
+         │          │          │ Article      │
+         │          │          │ expires      │
+         │          │          │ (3-day)      │
+         │          │          ▼              │
+         │          │   Return to IDLE ───────┘
+         │          │
+         │          │ Manual free /
+         │          │ channel goes idle
+         │          ▼
+         │   Return to IDLE ──────────────────┘
+         │
+         │ Google disapproves
+         ▼
+     ┌──────────────────────────────┐
+     │     <span class="r">DISAPPROVED</span>             │
+     │  NOT in idle queue           │
+     │  Cannot be assigned          │
+     │  Slack alert sent            │
+     │  Requires manual review      │
+     └──────────────┬───────────────┘
+                    │
+                    │ Manual reactivation
+                    ▼
+             Return to IDLE ──────────────────┘
+</div>
+
+<h3 id="flow-channel-idle">When a Channel Goes Idle</h3>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>Trigger:</strong> PUT <code>/api/channels/:id/status</code> with <code>{"status": "idle"}</code>, or internal event from channel monitoring system.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>Close Active Assignment:</strong> If the channel has an active assignment, it's closed — <code>unassigned_at = NOW()</code>, <code>status = "completed"</code>. The attribution window for the previous article is now sealed. Any revenue earned after this point will be attributed to the next article.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Update State:</strong> Channel status → "idle" in PostgreSQL. <code>idle_since = NOW()</code>. Added to Redis idle sorted set with current timestamp as score.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <strong>Check Waiting Queue:</strong> Immediately check <code>ca:waiting_articles</code> — if any articles are waiting for a channel, pop the oldest one and trigger assignment. This means a freed channel can be reassigned within milliseconds.
+  </div>
+</div>
+
+<h3 id="flow-channel-disapproved">When a Channel Gets Disapproved</h3>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>Close Active Assignment:</strong> Same as idle transition — any active assignment is closed cleanly.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>Skip Idle Queue:</strong> Disapproved channels are NOT added to the idle queue. They can't serve ads, so assigning them would waste an article's time.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Alert:</strong> Slack notification sent with channel ID and details. Someone needs to review and either fix the issue or permanently retire the channel.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <strong>Article Reassignment:</strong> The article that lost its channel gets a new assignment job queued. If idle channels are available, it gets reassigned immediately.
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="flow-revenue"><span class="emoji">💰</span> Flow 3: Revenue Attribution</h2>
+
+<p>This is how we know exactly what each article earned. Every 15 minutes, the system pulls revenue data from the AFS Reporting API and matches it to article assignments.</p>
+
+<h3 id="flow-revenue-pull">AFS Pull Cycle</h3>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>BullMQ Trigger:</strong> A repeatable job fires every 15 minutes on the <code>revenue-attribution</code> queue. This is configured at startup and persists across restarts (idempotent upsert).
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>AFS API Call:</strong> The worker calls the AFS Reporting API requesting revenue data <strong>by channel</strong> for the last <strong>30 minutes</strong>. Why 30 minutes when we pull every 15? Overlapping windows ensure we never miss data — if a pull is delayed or fails, the next pull's wider window catches it.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Response Processing:</strong> The AFS API returns data in the format: <code>[{ channelId, impressions, clicks, revenue, periodStart, periodEnd }]</code>. Each entry represents one channel's performance for one time period.
+  </div>
+</div>
+
+<h3 id="flow-revenue-matching">Revenue Matching</h3>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <strong>Channel → Article Lookup:</strong> For each channel with revenue, the worker checks Redis (<code>ca:channel_assignment:{channelId}</code>) to find which article currently owns this channel. If Redis misses, it falls back to PostgreSQL (query active assignment for this channel).
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-content">
+    <strong>Revenue Record Upsert:</strong> For each channel-period combination, the worker does an <code>INSERT ... ON CONFLICT DO UPDATE</code> on <code>revenue_events</code>. The unique key is <code>(channel_id, period_start)</code>. This means:
+    <ul>
+      <li><strong>First time seeing this data:</strong> INSERT — new revenue record created</li>
+      <li><strong>Overlapping pull sees same data again:</strong> UPDATE — existing record refreshed (no duplication)</li>
+      <li><strong>AFS corrects historical data:</strong> UPDATE — record is updated with latest figures</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">6</div>
+  <div class="step-content">
+    <strong>Materialized View Refresh:</strong> After all revenue records are written, both materialized views are refreshed <code>CONCURRENTLY</code> (non-blocking). The dashboard immediately reflects updated per-article and per-channel revenue.
+  </div>
+</div>
+
+<h3 id="flow-revenue-edge">Revenue Edge Cases</h3>
+
+<table>
+  <tr><th>Edge Case</th><th>What Happens</th><th>Why</th></tr>
+  <tr>
+    <td><strong>Channel reassigned mid-period</strong></td>
+    <td>Revenue for the period before <code>unassigned_at</code> → old article. Revenue after new <code>assigned_at</code> → new article.</td>
+    <td>Assignment timestamps define attribution windows precisely</td>
+  </tr>
+  <tr>
+    <td><strong>Gap between unassign and reassign</strong></td>
+    <td>Revenue during the gap is written with <code>attributed = FALSE</code></td>
+    <td>No article to attribute to — flagged for investigation</td>
+  </tr>
+  <tr>
+    <td><strong>Channel earns revenue but has no assignment</strong></td>
+    <td>Written as orphan revenue (<code>article_id = NULL</code>). Slack alert sent.</td>
+    <td>Shouldn't happen normally — indicates a system issue or manual channel use outside the system</td>
+  </tr>
+  <tr>
+    <td><strong>AFS pull fails</strong></td>
+    <td>BullMQ retries 3 times with exponential backoff. If all fail, Slack alert.</td>
+    <td>Overlapping windows mean next successful pull catches the missed data</td>
+  </tr>
+  <tr>
+    <td><strong>AFS returns corrected data for past period</strong></td>
+    <td>UPSERT updates the existing record</td>
+    <td>ON CONFLICT DO UPDATE on (channel_id, period_start) handles this automatically</td>
+  </tr>
+  <tr>
+    <td><strong>AFS reports revenue for disapproved channel</strong></td>
+    <td>Written with <code>attributed = FALSE</code> if no active assignment exists</td>
+    <td>Channels can earn residual revenue even after disapproval</td>
+  </tr>
+  <tr>
+    <td><strong>Multiple articles in one 15-min period</strong></td>
+    <td>Each assignment has precise timestamps — revenue is matched to whichever was active during that period</td>
+    <td>Timestamp-based, not period-based attribution</td>
+  </tr>
+</table>
+
+<div class="callout">
+  <div class="callout-title">Deduplication Guarantee</div>
+  The <code>UNIQUE(channel_id, period_start)</code> constraint plus <code>ON CONFLICT DO UPDATE</code> means you can pull the same AFS data 100 times and the revenue_events table will have exactly one record per channel-period. No duplicate counting. Ever.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="flow-expiry"><span class="emoji">⏰</span> Flow 4: 3-Day Expiry</h2>
+
+<p>Not every article earns money. Some get zero traffic. These articles are wasting a channel that could be earning money for a different article. The Expiry Worker identifies and reclaims these.</p>
+
+<h3 id="flow-expiry-detail">Detection Logic</h3>
+
+<p>Every hour, the Expiry Worker runs a SQL query:</p>
+
+<pre><code>SELECT a.*
+FROM articles a
+LEFT JOIN revenue_events r ON r.article_id = a.id
+WHERE a.status IN ('assigned', 'active')
+  AND a.published_at &lt;= NOW() - INTERVAL '72 hours'
+  AND a.published_at &gt;= NOW() - INTERVAL '96 hours'
+GROUP BY a.id
+HAVING COALESCE(SUM(r.impressions), 0) = 0
+   AND COALESCE(SUM(r.clicks), 0) = 0</code></pre>
+
+<h4>Why 72-96 hours specifically?</h4>
+
+<ul>
+  <li><strong>72 hours minimum:</strong> Give every article a fair 3-day window. Some articles have slow starts — traffic campaigns take time to ramp up.</li>
+  <li><strong>96 hours maximum:</strong> Don't keep re-checking old articles. Once an article passes the 96-hour mark, it's no longer checked by this query. If it had zero traffic at 72h and still zero at 96h, it was checked during that window and expired.</li>
+  <li><strong>Hourly checks within the 72-96h window:</strong> The worker runs every hour, so an article published at midnight on Monday will be checked starting Thursday midnight through Friday midnight — up to 24 checks within the window.</li>
+</ul>
+
+<div class="callout warn">
+  <div class="callout-title">Important: Zero Means Zero</div>
+  "Zero traffic" means literally zero impressions AND zero clicks across the entire 3-day period. Even 1 impression means the article stays. This is intentionally aggressive — a channel earning even a fraction of a cent is better than a channel tied to a truly dead article.
+</div>
+
+<h3 id="flow-expiry-reclaim">Reclamation Process</h3>
+
+<p>For each zero-traffic article found:</p>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <strong>Mark Article Expired:</strong> <code>status = "expired"</code>, <code>expired_at = NOW()</code>, <code>expiry_reason = "zero_traffic"</code>. The article is done — it can't receive a new channel.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <strong>Close Assignment:</strong> <code>unassigned_at = NOW()</code>, <code>status = "expired"</code>. The attribution window is sealed. Historical data is preserved — we know this channel was assigned to this article from X to Y and earned $0.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <strong>Free Channel:</strong> Channel <code>status = "idle"</code>, <code>idle_since = NOW()</code>. Pushed back into Redis idle sorted set.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <strong>Immediate Reassignment Check:</strong> The worker checks <code>ca:waiting_articles</code>. If articles are waiting, the freed channel is assigned immediately. A channel reclaimed from a dead article can be earning money for a new article within seconds.
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="flow-rotation"><span class="emoji">🔁</span> Flow 5: Channel Rotation Lifecycle</h2>
+
+<p>Here's the complete lifecycle of a single channel over a typical month:</p>
+
+<div class="flow">
+<span class="hl">Day 1:</span> Channel 1051 created, status = <span class="g">idle</span>
+        Enters Redis idle queue (score = timestamp)
+
+<span class="hl">Day 2:</span> Article "health-tips-001" published
+        Matching Engine: ZPOPMIN → Channel 1051 (longest idle)
+        Assignment created: 1051 → health-tips-001
+        Channel status = <span class="y">assigned</span>
+
+<span class="hl">Day 2-5:</span> Article earns revenue
+           Revenue pulls every 15 min → attributed to health-tips-001
+           Total: 45,000 impressions, 1,200 clicks, $187.50
+
+<span class="hl">Day 5:</span> Article traffic drops, manually freed
+        Assignment closed: unassigned_at = now
+        Channel 1051 → <span class="g">idle</span>, back in queue
+
+<span class="hl">Day 5:</span> Article "finance-guide-042" waiting in queue
+        Channel 1051 immediately assigned (was longest idle by 0.3s)
+        Assignment created: 1051 → finance-guide-042
+
+<span class="hl">Day 5-8:</span> Article earns revenue → attributed to finance-guide-042
+           Total: 12,000 impressions, 340 clicks, $52.10
+
+<span class="hl">Day 8:</span> Expiry Worker: finance-guide-042 → 0 traffic last 3 days?
+        NO — it had 12K impressions. Keeps the channel.
+
+<span class="hl">Day 10:</span> Traffic dies completely. Article freed manually.
+         Channel 1051 → <span class="g">idle</span> again.
+
+<span class="hl">Day 10:</span> Article "tech-review-099" assigned immediately
+         Assignment created: 1051 → tech-review-099
+
+<span class="hl">Day 13:</span> Expiry Worker: tech-review-099 → 0 impressions in 3 days
+         <span class="r">EXPIRED</span>. Channel reclaimed.
+         Channel 1051 → <span class="g">idle</span>, available for next article.
+
+<span class="hl">Day 15:</span> Google disapproves Channel 1051
+         Status → <span class="r">disapproved</span>
+         Slack alert sent
+         Channel removed from idle queue
+         Manual review required
+
+<span class="hl">Day 18:</span> Issue fixed, channel reactivated
+         Status → <span class="g">idle</span>, back in queue
+         Assigned to next article within seconds
+
+<span class="p">Month summary for Channel 1051:</span>
+  • Served 3 articles (health-tips, finance-guide, tech-review)
+  • Total revenue attributed: $239.60
+  • Days idle: ~5 (could be optimized)
+  • Days disapproved: ~3 (external factor)
+  • Days earning: ~22
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="flow-waiting"><span class="emoji">⏳</span> Flow 6: Waiting Queue</h2>
+
+<p>When all channels are in use and a new article arrives, it enters the waiting queue. This ensures no article is lost — it will be assigned the moment a channel frees up.</p>
+
+<h3>How It Works</h3>
+
+<ul>
+  <li><strong>Data Structure:</strong> Redis sorted set <code>ca:waiting_articles</code>, scored by timestamp</li>
+  <li><strong>Ordering:</strong> FIFO — oldest waiting article gets the first available channel</li>
+  <li><strong>Trigger:</strong> Every time a channel goes idle (via Channel State Worker or Expiry Worker), the waiting queue is checked</li>
+  <li><strong>Size:</strong> If the queue grows beyond 50 articles, a Slack alert fires — indicates channel shortage</li>
+</ul>
+
+<h3>Scenarios</h3>
+
+<table>
+  <tr><th>Scenario</th><th>Outcome</th></tr>
+  <tr><td>Queue is empty, channel goes idle</td><td>Channel stays in idle queue until an article arrives</td></tr>
+  <tr><td>Queue has 5 articles, 1 channel goes idle</td><td>Oldest article gets the channel. 4 remain waiting.</td></tr>
+  <tr><td>Queue has 10 articles, 3 channels go idle simultaneously</td><td>3 oldest articles each get a channel. 7 remain waiting.</td></tr>
+  <tr><td>Article has been waiting 2+ hours</td><td>Still waiting — no timeout. Gets assigned when a channel frees up.</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-overview"><span class="emoji">🌐</span> API Overview</h2>
+
+<p>Base URL: <code>http://localhost:3000</code> (or your deployed domain)</p>
+
+<p>All endpoints return JSON. All accept <code>Content-Type: application/json</code> for request bodies.</p>
+
+<h3>Response Format</h3>
+<p>All list endpoints return paginated responses:</p>
+<pre><code>{
+  "data": [...],
+  "total": 150,
+  "limit": 50,
+  "offset": 0
+}</code></pre>
+
+<p>All single-item endpoints return:</p>
+<pre><code>{
+  "data": { ... },
+  "message": "Optional human-readable status"
+}</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-articles"><span class="emoji">📄</span> API: Articles</h2>
+
+<h3><span class="method method-post">POST</span> <span class="endpoint">/api/articles</span></h3>
+<p>Create a new article and trigger automatic channel assignment.</p>
+
+<div class="code-label">Request Body</div>
+<pre><code>{
+  "id": 9050,                              // Required. Unique numeric ID.
+  "externalId": "my-article-slug",         // Required. Your CMS identifier.
+  "url": "https://yoursite.com/article-1", // Optional. Article URL.
+  "category": "health",                    // Optional. For filtering/analytics.
+  "publishedAt": "2026-04-01T10:00:00Z"   // Required. ISO 8601 timestamp.
+}</code></pre>
+
+<div class="code-label">Response (201 Created)</div>
+<pre><code>{
+  "data": {
+    "id": "9050",
+    "external_id": "my-article-slug",
+    "url": "https://yoursite.com/article-1",
+    "category": "health",
+    "status": "pending",           // Will change to "assigned" within ~1s
+    "published_at": "2026-04-01T10:00:00.000Z",
+    "expired_at": null,
+    "expiry_reason": null,
+    "created_at": "2026-04-01T10:00:00.500Z"
+  },
+  "message": "Article created, assignment job queued"
+}</code></pre>
+
+<div class="callout">
+  <div class="callout-title">What happens after creation</div>
+  A BullMQ job is queued immediately. The Matching Engine picks it up within ~50ms and assigns a channel. The article status changes from "pending" to "assigned". If you query <code>GET /api/articles/9050</code> one second later, you'll see the assignment.
+</div>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/articles</span></h3>
+<p>List articles with optional filters and pagination.</p>
+
+<table>
+  <tr><th>Query Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>status</code></td><td>string</td><td>—</td><td>Filter: pending, assigned, active, expired, stopped</td></tr>
+  <tr><td><code>category</code></td><td>string</td><td>—</td><td>Filter by category</td></tr>
+  <tr><td><code>dateFrom</code></td><td>ISO date</td><td>—</td><td>Published after this date</td></tr>
+  <tr><td><code>dateTo</code></td><td>ISO date</td><td>—</td><td>Published before this date</td></tr>
+  <tr><td><code>limit</code></td><td>number</td><td>50</td><td>Results per page</td></tr>
+  <tr><td><code>offset</code></td><td>number</td><td>0</td><td>Pagination offset</td></tr>
+</table>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/articles/:id</span></h3>
+<p>Get a single article with its current assignment and revenue summary.</p>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/articles/:id/revenue</span></h3>
+<p>Detailed revenue breakdown — all revenue events for this article plus aggregated summary (total impressions, clicks, revenue, RPM).</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-channels"><span class="emoji">📡</span> API: Channels</h2>
+
+<h3><span class="method method-post">POST</span> <span class="endpoint">/api/channels</span></h3>
+<p>Register a new channel in the system.</p>
+<pre><code>{
+  "id": 5001,                    // Required. Unique numeric ID.
+  "externalId": "1234567890"     // Required. AFS channel identifier.
+}</code></pre>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/channels</span></h3>
+<p>List all channels with optional status filter. Params: <code>status</code>, <code>limit</code>, <code>offset</code>.</p>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/channels/:id</span></h3>
+<p>Get channel details with full assignment history — every article this channel has ever been assigned to.</p>
+
+<h3><span class="method method-put">PUT</span> <span class="endpoint">/api/channels/:id/status</span></h3>
+<p>Change a channel's operational status. <strong>This is the primary way to manage channel lifecycle.</strong></p>
+
+<pre><code>{ "status": "idle" }         // Free channel, add to assignment queue
+{ "status": "active" }       // Mark as in-use (not idle, not assignable)
+{ "status": "disapproved" }  // Google disapproved — triggers Slack alert</code></pre>
+
+<div class="callout warn">
+  <div class="callout-title">Side Effects</div>
+  Changing status is not just a database update. It triggers the Channel State Worker which handles assignment closure, idle queue management, waiting article checks, and Slack alerts. This is an <strong>action</strong>, not just a status change.
+</div>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/channels/idle</span></h3>
+<p>Get the current idle channel queue. Shows each idle channel with how long it's been idle, sorted by idle duration (longest first).</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-assignments"><span class="emoji">🔗</span> API: Assignments</h2>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/assignments/active</span></h3>
+<p>All currently active channel↔article assignments. This is the "who owns what right now" view.</p>
+
+<div class="code-label">Response</div>
+<pre><code>{
+  "data": [
+    {
+      "id": "10",
+      "article_id": "9050",
+      "channel_id": "1051",
+      "assigned_at": "2026-04-01T10:00:01.500Z",  // When the channel was assigned
+      "unassigned_at": null,                        // null = still active
+      "status": "active",
+      "article_external_id": "my-article-slug",
+      "article_url": "https://yoursite.com/article-1",
+      "channel_external_id": "1234567890"
+    }
+  ],
+  "total": 1847
+}</code></pre>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/assignments</span></h3>
+<p>List all assignments (active + historical). Filter by <code>status</code> (active, completed, expired).</p>
+
+<h3><span class="method method-post">POST</span> <span class="endpoint">/api/assignments/manual</span></h3>
+<p>Manually assign a specific channel to a specific article, overriding auto-assignment. Use sparingly — for cases where you want a specific channel on a specific article.</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-revenue"><span class="emoji">💰</span> API: Revenue</h2>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/revenue/summary</span></h3>
+<p>Aggregate revenue across all articles — today, 7 days, 30 days.</p>
+
+<pre><code>{
+  "data": {
+    "revenue_today": "4827.63",
+    "impressions_today": 892450,
+    "clicks_today": 24680,
+    "revenue_7d": "31542.18",
+    "impressions_7d": 5847200,
+    "clicks_7d": 164300,
+    "revenue_30d": "128750.92",
+    "impressions_30d": 23840000,
+    "clicks_30d": 672400
+  }
+}</code></pre>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/revenue/by-article</span></h3>
+<p>Per-article revenue from the materialized view. Sortable and paginated.</p>
+
+<table>
+  <tr><th>Query Param</th><th>Options</th><th>Default</th></tr>
+  <tr><td><code>sort</code></td><td>total_revenue, total_impressions, total_clicks, rpm, published_at</td><td>total_revenue</td></tr>
+  <tr><td><code>order</code></td><td>asc, desc</td><td>desc</td></tr>
+  <tr><td><code>limit</code></td><td>1-100</td><td>50</td></tr>
+  <tr><td><code>page</code></td><td>1+</td><td>1</td></tr>
+</table>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/revenue/by-channel</span></h3>
+<p>Per-channel revenue — how much each channel has earned across all articles it has served.</p>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/revenue/unattributed</span></h3>
+<p>Revenue records that couldn't be attributed to any article. These indicate either a gap between assignments or channels being used outside the system.</p>
+
+<h3><span class="method method-post">POST</span> <span class="endpoint">/api/revenue/refresh</span></h3>
+<p>Manually trigger materialized view refresh. Normally happens automatically every 15 minutes.</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-health"><span class="emoji">🏥</span> API: Health Check</h2>
+
+<h3><span class="method method-get">GET</span> <span class="endpoint">/api/health</span></h3>
+
+<pre><code>{
+  "status": "healthy",                         // "healthy" or "unhealthy"
+  "uptime": 86400.5,                           // Seconds since boot
+  "timestamp": "2026-04-01T10:00:00.000Z",
+  "checks": {
+    "postgres": "healthy",                     // Can execute queries
+    "redis": "healthy"                         // Can PING
+  }
+}</code></pre>
+
+<p>Use this for uptime monitoring. If either check fails, <code>status</code> becomes <code>"unhealthy"</code>.</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="api-errors"><span class="emoji">⚠️</span> API: Error Handling</h2>
+
+<p>All errors return JSON with an <code>error</code> field:</p>
+
+<pre><code>// 400 Bad Request
+{ "error": "Missing required field: externalId" }
+
+// 404 Not Found
+{ "error": "Article not found" }
+
+// 409 Conflict
+{ "error": "Article with this ID already exists" }
+
+// 500 Internal Server Error
+{ "error": "Internal server error", "stack": "..." }  // stack only in dev mode</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-channels"><span class="emoji">🗄️</span> Database: channels</h2>
+
+<pre><code>CREATE TABLE channels (
+    id              BIGINT PRIMARY KEY,
+    external_id     VARCHAR(20) NOT NULL UNIQUE,  -- AFS channel identifier
+    status          VARCHAR(20) NOT NULL DEFAULT 'idle',
+                    -- idle | assigned | disapproved | manual_review
+    idle_since      TIMESTAMPTZ,          -- When the channel became idle
+    assigned_to     BIGINT,               -- FK to articles.id (current)
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Fast lookup by status (most queries filter by this)
+CREATE INDEX idx_channels_status ON channels(status);
+
+-- Fast lookup for idle channels ordered by idle time
+CREATE INDEX idx_channels_idle_since ON channels(idle_since) WHERE status = 'idle';</code></pre>
+
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>id</code></td><td>BIGINT</td><td>Internal primary key</td></tr>
+  <tr><td><code>external_id</code></td><td>VARCHAR(20)</td><td>AFS channel identifier (the number you see in Google's system)</td></tr>
+  <tr><td><code>status</code></td><td>VARCHAR(20)</td><td>Current state: idle, assigned, disapproved, manual_review</td></tr>
+  <tr><td><code>idle_since</code></td><td>TIMESTAMPTZ</td><td>When the channel became idle. NULL if currently assigned.</td></tr>
+  <tr><td><code>assigned_to</code></td><td>BIGINT</td><td>Current article FK. NULL if not assigned. Denormalized for quick lookups.</td></tr>
+  <tr><td><code>created_at</code></td><td>TIMESTAMPTZ</td><td>When the channel was registered</td></tr>
+  <tr><td><code>updated_at</code></td><td>TIMESTAMPTZ</td><td>Last modification</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-articles"><span class="emoji">🗄️</span> Database: articles</h2>
+
+<pre><code>CREATE TABLE articles (
+    id              BIGINT PRIMARY KEY,
+    external_id     VARCHAR(100) NOT NULL UNIQUE,
+    url             TEXT,
+    category        VARCHAR(50),
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending',
+                    -- pending | assigned | active | expired | stopped
+    published_at    TIMESTAMPTZ NOT NULL,
+    expired_at      TIMESTAMPTZ,
+    expiry_reason   VARCHAR(50),   -- zero_traffic | manual | disapproved
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);</code></pre>
+
+<h4>Article Status Meanings</h4>
+<table>
+  <tr><th>Status</th><th>Meaning</th><th>Can Receive Channel?</th></tr>
+  <tr><td><span class="badge badge-blue">pending</span></td><td>Just created, waiting for channel assignment</td><td>Yes</td></tr>
+  <tr><td><span class="badge badge-green">assigned</span></td><td>Has a channel, earning revenue</td><td>Already has one</td></tr>
+  <tr><td><span class="badge badge-green">active</span></td><td>Has a channel and has confirmed traffic</td><td>Already has one</td></tr>
+  <tr><td><span class="badge badge-red">expired</span></td><td>Had zero traffic for 3 days, channel reclaimed</td><td>No</td></tr>
+  <tr><td><span class="badge badge-yellow">stopped</span></td><td>Manually stopped</td><td>No</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-assignments"><span class="emoji">🗄️</span> Database: assignments</h2>
+
+<pre><code>CREATE TABLE assignments (
+    id              BIGSERIAL PRIMARY KEY,
+    article_id      BIGINT NOT NULL REFERENCES articles(id),
+    channel_id      BIGINT NOT NULL REFERENCES channels(id),
+    assigned_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    unassigned_at   TIMESTAMPTZ,    -- NULL while active
+    status          VARCHAR(20) NOT NULL DEFAULT 'active',
+                    -- active | completed | expired
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);</code></pre>
+
+<div class="callout">
+  <div class="callout-title">This is the attribution table</div>
+  Every row defines a time window: channel C was assigned to article A from <code>assigned_at</code> to <code>unassigned_at</code>. All revenue for C during that window belongs to A. When <code>unassigned_at</code> is NULL, the assignment is still active.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-revenue"><span class="emoji">🗄️</span> Database: revenue_events</h2>
+
+<pre><code>CREATE TABLE revenue_events (
+    id              BIGSERIAL PRIMARY KEY,
+    channel_id      BIGINT NOT NULL REFERENCES channels(id),
+    article_id      BIGINT,                    -- NULL if unattributed
+    assignment_id   BIGINT REFERENCES assignments(id),
+    impressions     INTEGER NOT NULL DEFAULT 0,
+    clicks          INTEGER NOT NULL DEFAULT 0,
+    revenue         NUMERIC(10, 4) NOT NULL DEFAULT 0,
+    period_start    TIMESTAMPTZ NOT NULL,
+    period_end      TIMESTAMPTZ NOT NULL,
+    pulled_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    attributed      BOOLEAN NOT NULL DEFAULT TRUE,
+    UNIQUE(channel_id, period_start)           -- Dedup key
+);</code></pre>
+
+<p>The <code>UNIQUE(channel_id, period_start)</code> constraint is critical — it prevents duplicate revenue records when overlapping AFS pulls fetch the same data.</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-log"><span class="emoji">🗄️</span> Database: channel_log</h2>
+
+<pre><code>CREATE TABLE channel_log (
+    id              BIGSERIAL PRIMARY KEY,
+    channel_id      BIGINT NOT NULL REFERENCES channels(id),
+    event           VARCHAR(30) NOT NULL,
+                    -- assigned | unassigned | idle | disapproved | reactivated
+    article_id      BIGINT,
+    metadata        JSONB,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);</code></pre>
+
+<p>This is the full audit trail. Every state change for every channel is logged here. Useful for debugging, compliance, and understanding channel history.</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-views"><span class="emoji">🗄️</span> Materialized Views</h2>
+
+<h3>mv_revenue_per_article</h3>
+<p>Pre-aggregated revenue per article. Refreshed every 15 minutes. Powers the dashboard revenue table and <code>/api/revenue/by-article</code>.</p>
+
+<p>Contains: article_id, external_id, url, category, published_at, status, total_impressions, total_clicks, total_revenue, rpm</p>
+
+<h3>mv_revenue_per_channel</h3>
+<p>Pre-aggregated revenue per channel. Shows total articles served, total revenue, etc.</p>
+
+<div class="callout">
+  <div class="callout-title">Why Materialized Views?</div>
+  Aggregating revenue across thousands of events for every dashboard load would be expensive. Materialized views pre-compute the aggregations and are refreshed every 15 minutes (when new revenue data arrives). Dashboard queries hit the pre-computed view — O(1) per article instead of scanning revenue_events.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="db-indexes"><span class="emoji">🗄️</span> Indexes & Performance</h2>
+
+<table>
+  <tr><th>Index</th><th>On</th><th>Purpose</th></tr>
+  <tr><td>idx_channels_status</td><td>channels(status)</td><td>Fast filter by status</td></tr>
+  <tr><td>idx_channels_idle_since</td><td>channels(idle_since) WHERE status='idle'</td><td>Partial index — only idle channels</td></tr>
+  <tr><td>idx_articles_status</td><td>articles(status)</td><td>Fast filter by status</td></tr>
+  <tr><td>idx_articles_published</td><td>articles(published_at, status)</td><td>Expiry worker's 72-96h query</td></tr>
+  <tr><td>idx_assignments_channel</td><td>assignments(channel_id, assigned_at)</td><td>Revenue attribution lookup</td></tr>
+  <tr><td>idx_assignments_article</td><td>assignments(article_id)</td><td>Article's assignment history</td></tr>
+  <tr><td>idx_assignments_active</td><td>assignments(status) WHERE status='active'</td><td>Partial — fast active-only queries</td></tr>
+  <tr><td>idx_revenue_channel</td><td>revenue_events(channel_id, period_start)</td><td>Revenue by channel + dedup</td></tr>
+  <tr><td>idx_revenue_article</td><td>revenue_events(article_id, period_start)</td><td>Revenue by article</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="redis-idle"><span class="emoji">🔴</span> Redis: Idle Channel Queue</h2>
+
+<table>
+  <tr><th>Key</th><th>Type</th><th>Operations</th></tr>
+  <tr>
+    <td><code>ca:idle_channels</code></td>
+    <td>Sorted Set</td>
+    <td>
+      <code>ZADD</code> — add channel (score = idle_since timestamp in ms)<br>
+      <code>ZPOPMIN</code> — get & remove longest-idle channel (atomic)<br>
+      <code>ZREM</code> — remove specific channel<br>
+      <code>ZCARD</code> — count idle channels<br>
+      <code>ZRANGE</code> — list idle channels with scores
+    </td>
+  </tr>
+</table>
+
+<p><strong>Why a sorted set?</strong> We need to always assign the longest-idle channel first (fair rotation). Sorted sets maintain order by score. ZPOPMIN atomically removes and returns the lowest-scored member — perfect for "give me the channel that's been idle the longest".</p>
+
+<h2 id="redis-waiting"><span class="emoji">🔴</span> Redis: Waiting Article Queue</h2>
+
+<table>
+  <tr>
+    <td><code>ca:waiting_articles</code></td>
+    <td>Sorted Set</td>
+    <td>Same operations as idle queue but for articles waiting for channels. FIFO ordering by timestamp.</td>
+  </tr>
+</table>
+
+<h2 id="redis-state"><span class="emoji">🔴</span> Redis: Assignment State Store</h2>
+
+<table>
+  <tr><th>Key Pattern</th><th>Type</th><th>Purpose</th></tr>
+  <tr>
+    <td><code>ca:channel_assignment:{channelId}</code></td>
+    <td>String</td>
+    <td>Maps channel → article. O(1) lookup during revenue attribution. "What article does channel 1051 belong to?"</td>
+  </tr>
+  <tr>
+    <td><code>ca:article_channel:{articleId}</code></td>
+    <td>String</td>
+    <td>Reverse mapping: article → channel. "What channel is article 9050 using?"</td>
+  </tr>
+</table>
+
+<p>Both mappings are set when an assignment is created and deleted when it's closed. They always match PostgreSQL — Redis is the fast lookup layer.</p>
+
+<h2 id="redis-recovery"><span class="emoji">🔴</span> Redis: Recovery from Loss</h2>
+
+<p>If Redis crashes and loses all data:</p>
+
+<pre><code>node scripts/sync-redis.js</code></pre>
+
+<p>This script reads all idle channels and active assignments from PostgreSQL and rebuilds the Redis state. Takes seconds for 2,000 channels. The system is fully operational again immediately after.</p>
+
+<div class="callout success">
+  <div class="callout-title">PostgreSQL is always the source of truth</div>
+  Redis is a performance optimization, not a primary data store. Losing Redis means temporary inability to process jobs (BullMQ needs Redis). But no data is lost — PostgreSQL has everything. Rebuild Redis from PG and you're back in business.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="redis-bullmq"><span class="emoji">🔴</span> Redis: BullMQ Queues</h2>
+
+<p>BullMQ uses Redis for queue state, job data, and scheduling. Four queues are defined:</p>
+
+<table>
+  <tr><th>Queue</th><th>Type</th><th>Config</th></tr>
+  <tr><td>article-assignment</td><td>Event-driven</td><td>Concurrency: 1, Retries: 3, Backoff: exponential</td></tr>
+  <tr><td>channel-state</td><td>Event-driven</td><td>Concurrency: 1, Retries: 3, Backoff: exponential</td></tr>
+  <tr><td>revenue-attribution</td><td>Repeatable (15 min)</td><td>Concurrency: 1, Retries: 3</td></tr>
+  <tr><td>article-expiry</td><td>Repeatable (1 hour)</td><td>Concurrency: 1, Retries: 3</td></tr>
+</table>
+
+<p>Repeatable jobs are configured using BullMQ's <code>upsertJobScheduler</code> — idempotent, so restarting the app doesn't create duplicate schedules.</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="worker-matching"><span class="emoji">⚙️</span> Worker: Matching Engine</h2>
+
+<p><strong>File:</strong> <code>src/workers/matchingEngine.js</code></p>
+<p><strong>Queue:</strong> article-assignment</p>
+<p><strong>Trigger:</strong> New article created via API</p>
+
+<h4>Job Data Format</h4>
+<pre><code>{
+  "articleId": 9050,
+  "externalId": "my-article-slug"  // For logging
+}</code></pre>
+
+<h4>Processing Logic</h4>
+<ol>
+  <li>Validate article exists and is in valid state</li>
+  <li>ZPOPMIN from <code>ca:idle_channels</code></li>
+  <li>If channel found: create assignment in PG, update Redis state, log event</li>
+  <li>If no channel: add to <code>ca:waiting_articles</code></li>
+  <li>On any failure: return channel to idle queue (ZADD)</li>
+</ol>
+
+<h4>Concurrency: 1</h4>
+<p>Critical for correctness. If two jobs ran simultaneously, they could create conflicting assignments. At ~14 articles/hour, sequential processing adds no meaningful latency.</p>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="worker-channel"><span class="emoji">⚙️</span> Worker: Channel State</h2>
+
+<p><strong>File:</strong> <code>src/workers/channelState.js</code></p>
+<p><strong>Queue:</strong> channel-state</p>
+<p><strong>Trigger:</strong> Channel status change via API</p>
+
+<h4>Handles Three Transitions</h4>
+<ul>
+  <li><strong>→ idle:</strong> Close assignment, add to idle queue, check waiting articles</li>
+  <li><strong>→ active:</strong> Remove from idle queue, update PG</li>
+  <li><strong>→ disapproved:</strong> Close assignment, skip idle queue, Slack alert</li>
+</ul>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="worker-revenue"><span class="emoji">⚙️</span> Worker: Revenue Attribution</h2>
+
+<p><strong>File:</strong> <code>src/workers/revenueAttribution.js</code></p>
+<p><strong>Queue:</strong> revenue-attribution</p>
+<p><strong>Trigger:</strong> Every 15 minutes (repeatable job)</p>
+
+<h4>Process</h4>
+<ol>
+  <li>Call AFS Reporting API (30-min window for overlap safety)</li>
+  <li>For each channel with revenue: look up assignment</li>
+  <li>UPSERT revenue_events (dedup on channel_id + period_start)</li>
+  <li>Flag unattributed revenue</li>
+  <li>Refresh materialized views</li>
+  <li>Alert on orphan revenue</li>
+</ol>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="worker-expiry"><span class="emoji">⚙️</span> Worker: Expiry</h2>
+
+<p><strong>File:</strong> <code>src/workers/expiryWorker.js</code></p>
+<p><strong>Queue:</strong> article-expiry</p>
+<p><strong>Trigger:</strong> Every 1 hour (repeatable job)</p>
+
+<h4>Process</h4>
+<ol>
+  <li>Query PG: articles published 72-96h ago with zero impressions/clicks</li>
+  <li>For each: mark expired, close assignment, free channel</li>
+  <li>Check waiting queue for immediate reassignment</li>
+</ol>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="worker-afs"><span class="emoji">⚙️</span> Worker: AFS Client</h2>
+
+<p><strong>File:</strong> <code>src/workers/afsClient.js</code></p>
+
+<p>Currently <strong>stubbed with sample data</strong>. This is the one file your engineer needs to modify for production — replace the mock with real AFS Reporting API calls.</p>
+
+<pre><code>// Interface your engineer needs to implement:
+async function fetchRevenueData(publisherId, apiKey, startTime, endTime) {
+  // Call AFS Reporting API
+  // Return: [{ channelId, impressions, clicks, revenue, periodStart, periodEnd }]
+}</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="worker-slack"><span class="emoji">⚙️</span> Worker: Slack Notifier</h2>
+
+<p><strong>File:</strong> <code>src/workers/slackNotifier.js</code></p>
+
+<p>Simple webhook helper. Sends alerts to Slack when configured.</p>
+
+<pre><code>sendAlert("Channel 1051 disapproved by Google", "warning")
+sendAlert("Orphan revenue: $12.45 on channel 1099", "error")
+sendAlert("Expiry: 5 articles reclaimed", "info")</code></pre>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="monitoring"><span class="emoji">🚨</span> Monitoring & Alerts</h2>
+
+<table>
+  <tr><th>Alert</th><th>Trigger</th><th>Severity</th><th>Action Required</th></tr>
+  <tr><td>Channel disapproved</td><td>Status → disapproved</td><td><span class="badge badge-red">Error</span></td><td>Review in Google, fix or retire channel</td></tr>
+  <tr><td>Orphan revenue</td><td>Revenue on unassigned channel</td><td><span class="badge badge-red">Error</span></td><td>Investigate — channel used outside system?</td></tr>
+  <tr><td>Queue backlog</td><td>&gt;50 articles waiting</td><td><span class="badge badge-yellow">Warning</span></td><td>Need more channels or faster expiry</td></tr>
+  <tr><td>AFS pull failure</td><td>2 consecutive failures</td><td><span class="badge badge-yellow">Warning</span></td><td>Check AFS API credentials/availability</td></tr>
+  <tr><td>Idle surplus</td><td>&gt;30% channels idle &gt;24h</td><td><span class="badge badge-blue">Info</span></td><td>Not enough articles? Reduce channel count?</td></tr>
+  <tr><td>Expiry worker stall</td><td>No run in &gt;2 hours</td><td><span class="badge badge-yellow">Warning</span></td><td>Check Redis/BullMQ health</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="recovery"><span class="emoji">🔧</span> Failure & Recovery</h2>
+
+<table>
+  <tr><th>Failure</th><th>Impact</th><th>Recovery</th></tr>
+  <tr>
+    <td><strong>Redis crashes</strong></td>
+    <td>No new assignments. No job processing. Existing assignments and revenue records in PG are safe.</td>
+    <td>Restart Redis. Run <code>node scripts/sync-redis.js</code>. System resumes.</td>
+  </tr>
+  <tr>
+    <td><strong>PostgreSQL crashes</strong></td>
+    <td>No writes possible. API returns errors. Workers fail.</td>
+    <td>Restart PG. Workers automatically retry failed jobs (BullMQ backoff).</td>
+  </tr>
+  <tr>
+    <td><strong>Node.js process crashes</strong></td>
+    <td>No API. No workers. Pending BullMQ jobs accumulate in Redis.</td>
+    <td>PM2 auto-restarts. Jobs in Redis are processed on restart.</td>
+  </tr>
+  <tr>
+    <td><strong>AFS API unavailable</strong></td>
+    <td>Revenue data not pulled. No attribution for missed periods.</td>
+    <td>BullMQ retries 3x. Next successful pull's 30-min window catches up.</td>
+  </tr>
+  <tr>
+    <td><strong>Redis + PG state diverge</strong></td>
+    <td>Redis shows different idle channels than PG.</td>
+    <td>Run <code>node scripts/sync-redis.js</code> — rebuilds Redis from PG truth.</td>
+  </tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="deployment"><span class="emoji">🚀</span> Deployment</h2>
+
+<h3>Quick Start (Local)</h3>
+<pre><code># Install dependencies
+cd projects/channel-attribution
+npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
+
+# Start services
+brew services start redis
+brew services start postgresql@16
+
+# Create database and apply schema
+createdb channel_attribution
+psql -d channel_attribution -f src/db/schema.sql
+
+# Seed test data (optional)
+node scripts/seed.js
+node scripts/sync-redis.js
+
+# Start the system
+node src/index.js
+
+# Access:
+# Dashboard: http://localhost:3000/dashboard
+# API:       http://localhost:3000/api/health
+# Docs:      http://localhost:3000/docs</code></pre>
+
+<h3>Production (Render / VPS)</h3>
+<pre><code># Environment variables (set in Render dashboard or .env)
+DATABASE_URL=postgresql://user:pass@host:5432/channel_attribution
+REDIS_URL=redis://host:6379
+AFS_PUBLISHER_ID=partner-pub-XXXX
+AFS_API_KEY=your-key
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/XXX
+PORT=3000
+NODE_ENV=production
+
+# Use PM2 for process management
+npm install -g pm2
+pm2 start src/index.js --name channel-attribution
+pm2 save
+pm2 startup</code></pre>
+
+<h3>Infrastructure Costs</h3>
+<table>
+  <tr><th>Service</th><th>Spec</th><th>Cost (est.)</th></tr>
+  <tr><td>Node.js (Render Web Service)</td><td>1 instance, 2GB RAM</td><td>$7-25/mo</td></tr>
+  <tr><td>PostgreSQL (Render/Supabase/Neon)</td><td>Managed, 1GB storage</td><td>$0-25/mo</td></tr>
+  <tr><td>Redis (Upstash/Render)</td><td>Managed, 256MB</td><td>$0-10/mo</td></tr>
+  <tr><td><strong>Total</strong></td><td></td><td><strong>$7-60/mo</strong></td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="scaling"><span class="emoji">📈</span> Scaling Path</h2>
+
+<table>
+  <tr><th>Bottleneck</th><th>Current Solution</th><th>Upgrade When</th><th>Upgrade To</th></tr>
+  <tr><td>Event processing</td><td>BullMQ (Redis)</td><td>&gt;10K events/min</td><td>Kafka</td></tr>
+  <tr><td>Analytics queries</td><td>PG materialized views</td><td>Queries &gt;2s</td><td>ClickHouse</td></tr>
+  <tr><td>Worker throughput</td><td>Single Node.js process</td><td>Job backlog growing</td><td>Multiple worker processes</td></tr>
+  <tr><td>Revenue events storage</td><td>Single PG table</td><td>&gt;100M rows</td><td>Partitioned by month or TimescaleDB</td></tr>
+  <tr><td>Channel count</td><td>2,000 in sorted set</td><td>&gt;50,000</td><td>Redis Cluster or sharding</td></tr>
+</table>
+
+<div class="callout success">
+  <div class="callout-title">Current capacity headroom</div>
+  At 2,000 channels and 10,000 articles/month, we're using roughly 1% of what this architecture can handle. Don't pre-optimize. Measure first.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h2 id="production"><span class="emoji">✅</span> Production Checklist</h2>
+
+<h3>Before Launch</h3>
+<ul>
+  <li>☐ Replace AFS stub (<code>src/workers/afsClient.js</code>) with real AFS Reporting API integration</li>
+  <li>☐ Set <code>AFS_PUBLISHER_ID</code> and <code>AFS_API_KEY</code> in environment</li>
+  <li>☐ Set up Slack webhook and configure <code>SLACK_WEBHOOK_URL</code></li>
+  <li>☐ Set <code>NODE_ENV=production</code></li>
+  <li>☐ Configure Redis persistence (RDB snapshots + AOF log)</li>
+  <li>☐ Set up PostgreSQL automated backups (daily)</li>
+  <li>☐ Use PM2 or systemd for process management (auto-restart on crash)</li>
+  <li>☐ Add authentication to API endpoints (API key or JWT)</li>
+  <li>☐ Set up uptime monitoring on <code>/api/health</code></li>
+  <li>☐ Test the full cycle: create article → assignment → revenue pull → expiry</li>
+</ul>
+
+<h3>After Launch</h3>
+<ul>
+  <li>☐ Monitor queue backlog (articles waiting for channels)</li>
+  <li>☐ Monitor orphan revenue alerts</li>
+  <li>☐ Review disapproved channels weekly</li>
+  <li>☐ Check materialized view freshness</li>
+  <li>☐ Validate revenue totals against AFS dashboard periodically</li>
+  <li>☐ Review and tune the 72-hour expiry window based on actual article performance data</li>
+</ul>
+
+<hr>
+
+<p style="text-align: center; color: var(--text-dim); margin-top: 40px; font-size: 13px;">
+  Channel Attribution System v1.0 — Built for scale, deployed for speed.<br>
+  Questions? Check the API at <code>/api/health</code> or review the source in <code>projects/channel-attribution/</code>.
+</p>
+
+</main>
+</div>
+</body>
+</html>
