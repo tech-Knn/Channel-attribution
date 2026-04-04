@@ -12,12 +12,18 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const { verifyToken } = require('./middleware/auth'); 
 
 const articlesRouter = require('./routes/articles');
 const channelsRouter = require('./routes/channels');
 const assignmentsRouter = require('./routes/assignments');
 const revenueRouter = require('./routes/revenue');
 const healthRouter = require('./routes/health');
+
+
+//--Added @ 4, April 
+const { apiLimiter } = require('./middleware/rateLimiter'); 
+
 
 const app = express();
 
@@ -27,6 +33,25 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(morgan('short'));
 app.use(express.json({ limit: '1mb' }));
+
+
+//--Added  @4 April
+//  APPLY GLOBALLY 
+app.use('/api', apiLimiter); 
+
+
+const authRoutes = require('./routes/auth');
+
+app.use(express.json());
+
+// Mount your auth routes to /api/auth
+app.use('/api/auth', authRoutes);
+
+//verify token for auth middleware:
+app.use('/api', verifyToken);
+
+//const PORT = process.env.PORT || 3000;
+//app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 
