@@ -21,7 +21,7 @@ const revenueRouter = require('./routes/revenue');
 const healthRouter = require('./routes/health');
 
 
-//--Added @ 4, April 
+
 const { apiLimiter } = require('./middleware/rateLimiter'); 
 
 
@@ -35,7 +35,7 @@ app.use(morgan('short'));
 app.use(express.json({ limit: '1mb' }));
 
 
-//--Added  @4 April
+
 //  APPLY GLOBALLY 
 app.use('/api', apiLimiter); 
 
