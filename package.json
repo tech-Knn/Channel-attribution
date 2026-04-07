@@ -11,7 +11,7 @@
     "db:schema": "psql $DATABASE_URL -f src/db/schema.sql",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "keywords": ["channel-attribution", "adsense", "revenue"],
   "author": "",
@@ -27,5 +27,8 @@
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
     "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
   }
 }
