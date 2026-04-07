@@ -11,24 +11,30 @@
     "db:schema": "psql $DATABASE_URL -f src/db/schema.sql",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "test": "jest"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start":"node index.js"
   },
-  "keywords": ["channel-attribution", "adsense", "revenue"],
+  "keywords": [
+    "channel-attribution",
+    "adsense",
+    "revenue"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.0",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.3.2",
+    "google-auth-library": "^10.6.2",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.0",
+    "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
     "pg": "^8.13.0"
-  },
-  "devDependencies": {
-    "jest": "^29.0.0"
   }
 }
