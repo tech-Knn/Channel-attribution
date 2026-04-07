@@ -68,7 +68,7 @@ async function processJob(job) {
     await client.query('BEGIN');
 
     // Create the assignment record
-    const assignment = await queries.createAssignment({ articleId, channelId });
+    const assignment = await queries.createAssignment({ articleId, channelId }, client);
 
     // Update channel status → assigned
     await queries.updateChannelStatus(

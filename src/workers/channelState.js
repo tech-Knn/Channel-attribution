@@ -68,13 +68,12 @@ async function processJob(job) {
 async function handleIdle(channelId, oldStatus) {
   const now = new Date();
 
-  // If channel was previously assigned, clean up the assignment
   if (oldStatus === 'assigned') {
-    const closedAssignment = await queries.closeAssignment(channelId, 'completed');
-    if (closedAssignment) {
+    const active = await queries.getActiveAssignmentForChannel(channelId);
+    if (active) {
+      await queries.closeAssignment(active.id, 'completed');
       await removeChannelAssignment(channelId);
-      await removeArticleChannel(closedAssignment.article_id);
-      console.log(`[channelState] Closed assignment #${closedAssignment.id} for channel ${channelId}`);
+      await removeArticleChannel(active.article_id);
     }
   }
 
@@ -132,21 +131,15 @@ async function handleActive(channelId) {
  * Channel disapproved — remove from idle queue, alert Slack.
  */
 async function handleDisapproved(channelId, oldStatus) {
-  // If channel was assigned, close the assignment
   if (oldStatus === 'assigned') {
-    const closedAssignment = await queries.closeAssignment(channelId, 'completed');
-    if (closedAssignment) {
+    const active = await queries.getActiveAssignmentForChannel(channelId);
+    if (active) {
+      await queries.closeAssignment(active.id, 'completed');
       await removeChannelAssignment(channelId);
-      await removeArticleChannel(closedAssignment.article_id);
-
-      // Re-queue the article that lost its channel
+      await removeArticleChannel(active.article_id);
       await queues.articleAssignment.add('reassign-after-disapproval', {
-        articleId: Number(closedAssignment.article_id),
+        articleId: Number(active.article_id),
       });
-      console.log(
-        `[channelState] Article ${closedAssignment.article_id} re-queued after ` +
-        `channel ${channelId} disapproval`,
-      );
     }
   }
 

@@ -1,83 +1,101 @@
-/**
- * AFS Reporting API Client (Stub)
- *
- * This module provides the interface for pulling revenue data from the
- * AdSense for Search Reporting API. Currently returns sample data —
- * replace the implementation with actual API calls when ready.
- *
- * The contract is stable: all consumers import fetchRevenueData() and
- * get back the same shape regardless of whether it's stubbed or live.
- */
-
 'use strict';
 
-/**
- * @typedef {Object} ChannelRevenue
- * @property {string} channelId   — AFS channel external ID
- * @property {number} impressions — Number of ad impressions in the period
- * @property {number} clicks      — Number of ad clicks in the period
- * @property {number} revenue     — Revenue in USD for the period
- */
+const { OAuth2Client } = require('google-auth-library');
+const axios = require('axios');
 
-/**
- * Fetch revenue data from the AFS Reporting API.
- *
- * @param {string} publisherId — AFS publisher ID (e.g. "partner-pub-XXXX")
- * @param {string} apiKey      — AFS API key
- * @param {Date}   startTime   — Start of the reporting window
- * @param {Date}   endTime     — End of the reporting window
- * @returns {Promise<ChannelRevenue[]>} Array of per-channel revenue records
- */
-async function fetchRevenueData(publisherId, apiKey, startTime, endTime) {
-  // ──────────────────────────────────────────────────────────────────────
-  // STUB: Replace this with actual AFS Reporting API call.
-  //
-  // Real implementation would:
-  //   1. Build request URL with publisherId, date range params
-  //   2. Set Authorization header with apiKey
-  //   3. Parse the CSV/JSON response
-  //   4. Map to ChannelRevenue[] shape
-  //
-  // Example with fetch:
-  //   const url = `https://www.googleapis.com/adsense/v2/accounts/${publisherId}/reports`;
-  //   const response = await fetch(url, {
-  //     headers: { Authorization: `Bearer ${apiKey}` },
-  //     ...
-  //   });
-  // ──────────────────────────────────────────────────────────────────────
+const BASE_URL = 'https://adsense.googleapis.com/v2';
 
-  console.log(
-    `[afsClient] Fetching revenue data for ${publisherId} ` +
-    `from ${startTime.toISOString()} to ${endTime.toISOString()} (STUB)`,
-  );
+let _cachedToken = null;
+let _tokenExpiresAt = 0;
 
-  // Return sample data that exercises all code paths
-  return [
-    {
-      channelId: '1001',
-      impressions: 2450,
-      clicks: 38,
-      revenue: 12.4500,
-    },
-    {
-      channelId: '1002',
-      impressions: 1800,
-      clicks: 22,
-      revenue: 8.7200,
-    },
-    {
-      channelId: '1003',
-      impressions: 500,
-      clicks: 5,
-      revenue: 1.2000,
-    },
-    {
-      channelId: '9999', // Channel with no assignment — tests orphan detection
-      impressions: 300,
-      clicks: 3,
-      revenue: 0.9500,
-    },
-  ];
+async function getAccessToken() {
+  if (_cachedToken && Date.now() < _tokenExpiresAt - 60_000) {
+    return _cachedToken;
+  }
+
+  const { ADSENSE_CLIENT_ID, ADSENSE_CLIENT_SECRET, ADSENSE_REFRESH_TOKEN } = process.env;
+
+  if (!ADSENSE_CLIENT_ID || !ADSENSE_CLIENT_SECRET || !ADSENSE_REFRESH_TOKEN) {
+    throw new Error('Missing OAuth2 credentials: ADSENSE_CLIENT_ID, ADSENSE_CLIENT_SECRET, ADSENSE_REFRESH_TOKEN');
+  }
+
+  const client = new OAuth2Client(ADSENSE_CLIENT_ID, ADSENSE_CLIENT_SECRET);
+  client.setCredentials({ refresh_token: ADSENSE_REFRESH_TOKEN });
+
+  const { token, res } = await client.getAccessToken();
+  if (!token) throw new Error('Failed to obtain access token');
+
+  _cachedToken = token;
+  _tokenExpiresAt = Date.now() + (res?.data?.expires_in || 3600) * 1000;
+
+  console.log('[afsClient] access token refreshed');
+  return token;
+}
+
+// Pulls daily revenue from AdSense API grouped by CUSTOM_SEARCH_STYLE_ID.
+// AdSense reports are day-granularity — repeated pulls upsert, no duplicates.
+async function fetchRevenueData(publisherId, _apiKey, startTime, endTime) {
+  const pubId = process.env.ADSENSE_PUBLISHER_ID || publisherId;
+  if (!pubId) throw new Error('No publisher ID — set ADSENSE_PUBLISHER_ID in .env');
+
+  const accountId = pubId.startsWith('accounts/') ? pubId : `accounts/${pubId}`;
+  const accessToken = await getAccessToken();
+
+  const start = new Date(startTime);
+  const end   = new Date(endTime);
+
+  // Google AdSense API requires repeated params for arrays: metrics=X&metrics=Y
+  const qs = new URLSearchParams();
+  qs.append('startDate.year',    String(start.getFullYear()));
+  qs.append('startDate.month',   String(start.getMonth() + 1));
+  qs.append('startDate.day',     String(start.getDate()));
+  qs.append('endDate.year',      String(end.getFullYear()));
+  qs.append('endDate.month',     String(end.getMonth() + 1));
+  qs.append('endDate.day',       String(end.getDate()));
+  qs.append('dimensions',        'CUSTOM_SEARCH_STYLE_ID');
+  qs.append('metrics',           'ESTIMATED_EARNINGS');
+  qs.append('metrics',           'IMPRESSIONS');
+  qs.append('metrics',           'CLICKS');
+  qs.append('reportingTimeZone', 'ACCOUNT_TIME_ZONE');
+
+  console.log(`[afsClient] fetching ${accountId} ${start.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}`);
+
+  let response;
+  try {
+    response = await axios.get(`${BASE_URL}/${accountId}/reports:generate?${qs.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 15_000,
+    });
+  } catch (err) {
+    if (err.response?.status === 401) {
+      _cachedToken = null;
+      _tokenExpiresAt = 0;
+    }
+    const msg = err.response?.data?.error?.message || err.message;
+    throw new Error(`AdSense API error (${err.response?.status}): ${msg}`);
+  }
+
+  const rows = response.data.rows || [];
+  if (!rows.length) {
+    console.log('[afsClient] no revenue data for this window');
+    return [];
+  }
+
+  // Cell order: CUSTOM_SEARCH_STYLE_ID, ESTIMATED_EARNINGS, IMPRESSIONS, CLICKS
+  const result = rows
+    .map((row) => {
+      const c = row.cells || [];
+      return {
+        channelId:   c[0]?.value || '',
+        revenue:     parseFloat(c[1]?.value || '0'),
+        impressions: parseInt(c[2]?.value  || '0', 10),
+        clicks:      parseInt(c[3]?.value  || '0', 10),
+      };
+    })
+    .filter((r) => r.channelId && r.channelId !== 'NONE');
+
+  console.log(`[afsClient] ${result.length} channel(s) with revenue`);
+  return result;
 }
 
 module.exports = { fetchRevenueData };

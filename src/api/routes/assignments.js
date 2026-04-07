@@ -1,11 +1,3 @@
-/**
- * Assignment Routes
- *
- * GET    /api/assignments         — List with filters & pagination
- * GET    /api/assignments/active  — All currently active assignments
- * POST   /api/assignments/manual  — Manual channel→article assignment
- */
-
 'use strict';
 
 const { Router } = require('express');
@@ -14,8 +6,7 @@ const { queues } = require('../../redis/queues');
 
 const router = Router();
 
-// ── GET /api/assignments/active — must come before parameterized routes ────
-
+// must be declared before /:id
 router.get('/active', async (req, res, next) => {
   try {
     const assignments = await queries.listActiveAssignments();
@@ -25,18 +16,13 @@ router.get('/active', async (req, res, next) => {
   }
 });
 
-// ── GET /api/assignments ───────────────────────────────────────────────────
-
 router.get('/', async (req, res, next) => {
   try {
     const { status, limit, offset } = req.query;
-
-    // Validate status filter
     const validStatuses = ['active', 'completed', 'expired'];
-    const filterStatus = validStatuses.includes(status) ? status : undefined;
 
     const result = await queries.listAssignments({
-      status: filterStatus,
+      status: validStatuses.includes(status) ? status : undefined,
       limit: Math.min(parseInt(limit, 10) || 50, 200),
       offset: parseInt(offset, 10) || 0,
     });
@@ -46,8 +32,6 @@ router.get('/', async (req, res, next) => {
     next(err);
   }
 });
-
-// ── POST /api/assignments/manual ───────────────────────────────────────────
 
 router.post('/manual', async (req, res, next) => {
   try {
@@ -60,59 +44,39 @@ router.post('/manual', async (req, res, next) => {
     const artId = Number(articleId);
     const chId = Number(channelId);
 
-    // Verify both exist
-    const article = await queries.getArticleById(artId);
-    if (!article) {
-      return res.status(404).json({ error: 'Article not found' });
+    const [article, channel] = await Promise.all([
+      queries.getArticleById(artId),
+      queries.getChannelById(chId),
+    ]);
+
+    if (!article) return res.status(404).json({ error: 'Article not found' });
+    if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+    const [existingChannel, existingArticle] = await Promise.all([
+      queries.getActiveAssignmentForChannel(chId),
+      queries.getActiveAssignmentForArticle(artId),
+    ]);
+
+    if (existingChannel) {
+      await queries.closeAssignment(existingChannel.id, 'completed');
+      await queries.addChannelLog(chId, 'unassigned', existingChannel.article_id, { reason: 'manual_override' });
     }
 
-    const channel = await queries.getChannelById(chId);
-    if (!channel) {
-      return res.status(404).json({ error: 'Channel not found' });
+    if (existingArticle) {
+      await queries.closeAssignment(existingArticle.id, 'completed');
+      await queries.addChannelLog(existingArticle.channel_id, 'unassigned', artId, { reason: 'manual_override' });
     }
 
-    // Check for existing active assignment on this channel
-    const existingChannelAssignment = await queries.getActiveAssignmentForChannel(chId);
-    if (existingChannelAssignment) {
-      // Close the existing assignment first
-      await queries.closeAssignment(existingChannelAssignment.id, 'completed');
-      await queries.addChannelLog(chId, 'unassigned', existingChannelAssignment.article_id, {
-        reason: 'manual_override',
-      });
-    }
-
-    // Check for existing active assignment on this article
-    const existingArticleAssignment = await queries.getActiveAssignmentForArticle(artId);
-    if (existingArticleAssignment) {
-      await queries.closeAssignment(existingArticleAssignment.id, 'completed');
-      await queries.addChannelLog(existingArticleAssignment.channel_id, 'unassigned', artId, {
-        reason: 'manual_override',
-      });
-    }
-
-    // Create the new assignment
     const assignment = await queries.createAssignment({ articleId: artId, channelId: chId });
 
-    // Update channel status
-    await queries.updateChannelStatus(chId, 'assigned', { assignedTo: artId });
+    await Promise.all([
+      queries.updateChannelStatus(chId, 'assigned', { assignedTo: artId }),
+      queries.updateArticleStatus(artId, 'assigned'),
+      queries.addChannelLog(chId, 'assigned', artId, { method: 'manual' }),
+      queues.channelState.add('manual-assignment', { channelId: chId, articleId: artId, assignmentId: assignment.id }),
+    ]);
 
-    // Update article status
-    await queries.updateArticleStatus(artId, 'assigned');
-
-    // Trigger state sync job
-    await queues.channelState.add('manual-assignment', {
-      channelId: chId,
-      articleId: artId,
-      assignmentId: assignment.id,
-    });
-
-    // Log the event
-    await queries.addChannelLog(chId, 'assigned', artId, { method: 'manual' });
-
-    res.status(201).json({
-      data: assignment,
-      message: 'Manual assignment created',
-    });
+    res.status(201).json({ data: assignment });
   } catch (err) {
     next(err);
   }

@@ -1,42 +1,19 @@
-/**
- * Slack Notifier — simple webhook helper for system alerts.
- *
- * Usage:
- *   const { sendAlert } = require('./slackNotifier');
- *   await sendAlert('Channel 42 disapproved', 'warning');
- */
-
 'use strict';
 
 const config = require('../config');
 
-// Level → emoji mapping for visual clarity in Slack
-const LEVEL_EMOJI = {
-  info:    'ℹ️',
-  warning: '⚠️',
-  error:   '🚨',
-};
+const LEVELS = { info: 'INFO', warning: 'WARNING', error: 'ERROR' };
 
-/**
- * Send an alert message to the configured Slack webhook.
- *
- * @param {string} message — Human-readable alert text
- * @param {'info'|'warning'|'error'} level — Severity level
- * @returns {Promise<void>}
- */
 async function sendAlert(message, level = 'info') {
   const webhookUrl = config.slack.webhookUrl;
 
   if (!webhookUrl) {
-    console.warn('[slack] No SLACK_WEBHOOK_URL configured — skipping alert:', message);
+    console.warn('[slack] no webhook configured —', message);
     return;
   }
 
-  const emoji = LEVEL_EMOJI[level] || LEVEL_EMOJI.info;
-  const timestamp = new Date().toISOString();
-
   const payload = {
-    text: `${emoji} *[Channel Attribution — ${level.toUpperCase()}]*\n${message}\n_${timestamp}_`,
+    text: `[Channel Attribution — ${LEVELS[level] || 'INFO'}]\n${message}\n${new Date().toISOString()}`,
   };
 
   try {
@@ -47,12 +24,10 @@ async function sendAlert(message, level = 'info') {
     });
 
     if (!response.ok) {
-      const body = await response.text();
-      console.error(`[slack] Webhook returned ${response.status}: ${body}`);
+      console.error(`[slack] webhook returned ${response.status}`);
     }
   } catch (err) {
-    // Slack alerts are best-effort — never let them crash a worker
-    console.error('[slack] Failed to send alert:', err.message);
+    console.error('[slack] failed to send alert:', err.message);
   }
 }
 

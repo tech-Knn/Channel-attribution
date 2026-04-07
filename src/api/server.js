@@ -47,19 +47,16 @@ app.use(express.json());
 // Mount your auth routes to /api/auth
 app.use('/api/auth', authRoutes);
 
-//verify token for auth middleware:
-app.use('/api', verifyToken);
-
-//const PORT = process.env.PORT || 3000;
-//app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
 // ── Routes ─────────────────────────────────────────────────────────────────
 
-app.use('/api/articles', articlesRouter);
-app.use('/api/channels', channelsRouter);
-app.use('/api/assignments', assignmentsRouter);
-app.use('/api/revenue', revenueRouter);
+// Public routes (no auth required)
 app.use('/api/health', healthRouter);
+
+// Protected routes
+app.use('/api/articles', verifyToken, articlesRouter);
+app.use('/api/channels', verifyToken, channelsRouter);
+app.use('/api/assignments', verifyToken, assignmentsRouter);
+app.use('/api/revenue', verifyToken, revenueRouter);
 
 // ── Dashboard static files ─────────────────────────────────────────────────
 

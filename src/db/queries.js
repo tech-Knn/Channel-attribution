@@ -79,7 +79,8 @@ async function listArticles({ status, category, dateFrom, dateTo, limit = 50, of
 /**
  * Update article status.
  */
-async function updateArticleStatus(id, status, extra = {}) {
+async function updateArticleStatus(id, status, extra = {}, client = null) {
+  const db = client || pool;
   const sets = ['status = $2'];
   const params = [id, status];
   let idx = 3;
@@ -94,7 +95,7 @@ async function updateArticleStatus(id, status, extra = {}) {
   }
 
   const sql = `UPDATE articles SET ${sets.join(', ')} WHERE id = $1 RETURNING *`;
-  const { rows } = await pool.query(sql, params);
+  const { rows } = await db.query(sql, params);
   return rows[0] || null;
 }
 
@@ -163,12 +164,13 @@ async function listChannels({ status, limit = 50, offset = 0 } = {}) {
 /**
  * Update channel status and optional fields.
  */
-async function updateChannelStatus(id, status, extra = {}) {
+async function updateChannelStatus(id, status, extra = {}, client = null) {
+  const db = client || pool;
   const sets = ['status = $2', 'updated_at = NOW()'];
   const params = [id, status];
   let idx = 3;
 
-  if (status === 'idle' && extra.assignedTo === undefined && !extra.idleSince) { //  he hardcoded defaults for idle status now only apply when extra doesn't supply those fields explicitly.
+  if (status === 'idle' && extra.assignedTo === undefined && !extra.idleSince) {
     sets.push(`idle_since = NOW()`);
     sets.push(`assigned_to = NULL`);
   }
@@ -182,7 +184,7 @@ async function updateChannelStatus(id, status, extra = {}) {
   }
 
   const sql = `UPDATE channels SET ${sets.join(', ')} WHERE id = $1 RETURNING *`;
-  const { rows } = await pool.query(sql, params);
+  const { rows } = await db.query(sql, params);
   return rows[0] || null;
 }
 
@@ -208,12 +210,13 @@ async function getChannelAssignmentHistory(channelId, limit = 20) {
 /**
  * Create a new assignment.
  */
-async function createAssignment({ articleId, channelId }) {
+async function createAssignment({ articleId, channelId }, client = null) {
+  const db = client || pool;
   const sql = `
     INSERT INTO assignments (article_id, channel_id, assigned_at, status)
     VALUES ($1, $2, NOW(), 'active')
     RETURNING *`;
-  const { rows } = await pool.query(sql, [articleId, channelId]);
+  const { rows } = await db.query(sql, [articleId, channelId]);
   return rows[0];
 }
 
@@ -422,6 +425,31 @@ async function refreshMaterializedViews() {
   return { refreshed: true, at: new Date().toISOString() };
 }
 
+/**
+ * Refresh idle channel loss materialized view (called hourly).
+ */
+async function refreshIdleLossView() {
+  await pool.query('REFRESH MATERIALIZED VIEW CONCURRENTLY mv_idle_channel_loss');
+  return { refreshed: true, at: new Date().toISOString() };
+}
+
+/**
+ * Get idle channel loss estimates from materialized view.
+ */
+async function getIdleChannelLoss({ limit = 50, offset = 0 } = {}) {
+  const sql = `
+    SELECT * FROM mv_idle_channel_loss
+    ORDER BY estimated_lost_revenue DESC
+    LIMIT $1 OFFSET $2`;
+  const { rows } = await pool.query(sql, [limit, offset]);
+
+  const { rows: countRows } = await pool.query(
+    'SELECT COUNT(*)::int AS total FROM mv_idle_channel_loss',
+  );
+
+  return { data: rows, total: countRows[0].total, limit, offset };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Dashboard Stats
 // ═══════════════════════════════════════════════════════════════════════════
@@ -498,12 +526,13 @@ async function getRecentAlerts(limit = 50) {
 /**
  * Add a channel log entry.
  */
-async function addChannelLog(channelId, event, articleId = null, metadata = null) {
+async function addChannelLog(channelId, event, articleId = null, metadata = null, client = null) {
+  const db = client || pool;
   const sql = `
     INSERT INTO channel_log (channel_id, event, article_id, metadata)
     VALUES ($1, $2, $3, $4)
     RETURNING *`;
-  const { rows } = await pool.query(sql, [channelId, event, articleId, metadata ? JSON.stringify(metadata) : null]);
+  const { rows } = await db.query(sql, [channelId, event, articleId, metadata ? JSON.stringify(metadata) : null]);
   return rows[0];
 }
 
@@ -531,12 +560,13 @@ async function getZeroRevenueArticles(hoursMin = 72, hoursMax = 96) {
 /**
  * Close assignment by article ID (find active assignment for article and close it).
  */
-async function closeAssignmentByArticle(articleId, status = 'expired') {
+async function closeAssignmentByArticle(articleId, status = 'expired', client = null) {
+  const db = client || pool;
   const sql = `
     UPDATE assignments SET unassigned_at = NOW(), status = $2
     WHERE article_id = $1 AND status = 'active'
     RETURNING *`;
-  const { rows } = await pool.query(sql, [articleId, status]);
+  const { rows } = await db.query(sql, [articleId, status]);
   return rows[0] || null;
 }
 
@@ -576,7 +606,7 @@ module.exports = {
   getArticleById,
   listArticles,
   updateArticleStatus,
-  getArticleRevenue,
+  getArticleRevenue,      
 
   // Channels
   createChannel,
@@ -599,6 +629,8 @@ module.exports = {
   getRevenueByChannel,
   getUnattributedRevenue,
   refreshMaterializedViews,
+  refreshIdleLossView,
+  getIdleChannelLoss,
 
   // Dashboard
   getDashboardStats,

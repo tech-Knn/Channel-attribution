@@ -3,6 +3,16 @@
 -- Version: 3.0 (matches SOP v3)
 -- ============================================================
 
+-- ── users ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS users (
+    id          BIGSERIAL PRIMARY KEY,
+    email       VARCHAR(255) NOT NULL UNIQUE,
+    password    TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
 -- ── channels ────────────────────────────────────────────────
 CREATE TABLE channels (
     id              BIGINT PRIMARY KEY,
@@ -126,3 +136,21 @@ LEFT JOIN revenue_events r ON r.channel_id = c.id
 GROUP BY c.id, c.external_id, c.status;
 
 CREATE UNIQUE INDEX ON mv_revenue_per_channel(channel_id);
+
+-- Idle channel loss estimate (refreshed hourly)
+CREATE MATERIALIZED VIEW mv_idle_channel_loss AS
+SELECT
+    c.id                                          AS channel_id,
+    c.external_id,
+    c.idle_since,
+    EXTRACT(EPOCH FROM (NOW() - c.idle_since))    AS idle_seconds,
+    -- Estimate lost revenue: avg RPM of this channel * idle hours
+    COALESCE(
+        (SELECT SUM(r.revenue) / NULLIF(SUM(r.impressions), 0) * 1000
+         FROM revenue_events r WHERE r.channel_id = c.id), 0
+    ) * (EXTRACT(EPOCH FROM (NOW() - c.idle_since)) / 3600.0) AS estimated_lost_revenue
+FROM channels c
+WHERE c.status = 'idle'
+  AND c.idle_since IS NOT NULL;
+
+CREATE UNIQUE INDEX ON mv_idle_channel_loss(channel_id);
