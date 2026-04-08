@@ -30,7 +30,7 @@ CREATE INDEX idx_channels_idle_since ON channels(idle_since) WHERE status = 'idl
 
 -- ── articles ────────────────────────────────────────────────
 CREATE TABLE articles (
-    id              BIGINT PRIMARY KEY,
+    id              BIGSERIAL PRIMARY KEY,
     external_id     VARCHAR(100) NOT NULL UNIQUE,  -- CMS article ID
     url             TEXT,
     category        VARCHAR(50),
