@@ -143,7 +143,7 @@ SELECT
     c.id                                          AS channel_id,
     c.external_id,
     c.idle_since,
-    EXTRACT(EPOCH FROM (NOW() - c.idle_since))    AS idle_seconds,
+    EXTRACT(EPOCH FROM (NOW() - c.idle_since)) / 3600.0 AS idle_hours,
     -- Estimate lost revenue: avg RPM of this channel * idle hours
     COALESCE(
         (SELECT SUM(r.revenue) / NULLIF(SUM(r.impressions), 0) * 1000

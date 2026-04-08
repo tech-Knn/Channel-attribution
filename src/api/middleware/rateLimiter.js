@@ -14,7 +14,7 @@ const apiLimiter = rateLimit({
 // Stricter limiter for auth routes (login/signup)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5, // prevent brute force
+  max: 100, // prevent brute force
   standardHeaders: true,
   legacyHeaders: false,
   message: {

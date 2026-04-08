@@ -19,6 +19,7 @@ const channelsRouter = require('./routes/channels');
 const assignmentsRouter = require('./routes/assignments');
 const revenueRouter = require('./routes/revenue');
 const healthRouter = require('./routes/health');
+const statsRouter = require('./routes/stats');
 
 
 
@@ -49,23 +50,25 @@ app.use('/api/auth', authRoutes);
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 
+const webhookRouter = require('./routes/webhook');
+
 // Public routes (no auth required)
 app.use('/api/health', healthRouter);
+app.use('/api/webhook', webhookRouter);  // called by your publishing platform
 
 // Protected routes
 app.use('/api/articles', verifyToken, articlesRouter);
 app.use('/api/channels', verifyToken, channelsRouter);
 app.use('/api/assignments', verifyToken, assignmentsRouter);
 app.use('/api/revenue', verifyToken, revenueRouter);
+app.use('/api/stats', verifyToken, statsRouter);
 
-// ── Dashboard static files ─────────────────────────────────────────────────
+// ── Docs ───────────────────────────────────────────────────────────────────
 
-app.use('/dashboard', express.static(path.join(__dirname, '../../dashboard-static')));
 app.use('/docs', express.static(path.join(__dirname, '../../docs')));
 
-// Redirect root to dashboard
 app.get('/', (req, res) => {
-  res.redirect('/dashboard');
+  res.json({ status: 'ok', version: '3.0' });
 });
 
 // ── 404 handler ────────────────────────────────────────────────────────────
