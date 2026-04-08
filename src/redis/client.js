@@ -15,6 +15,8 @@ const config = require('../config');
 // Connection
 // ---------------------------------------------------------------------------
 
+const isTLS = config.redis.url.startsWith('rediss://');
+
 const client = new Redis(config.redis.url, {
   // Retry with exponential back-off, capped at 5 s
   retryStrategy(times) {
@@ -25,6 +27,7 @@ const client = new Redis(config.redis.url, {
   maxRetriesPerRequest: null,   // Required by BullMQ — never reject queued cmds
   enableReadyCheck: true,
   lazyConnect: false,           // Connect immediately on import
+  ...(isTLS && { tls: { rejectUnauthorized: false } }),
 });
 
 // ---------------------------------------------------------------------------

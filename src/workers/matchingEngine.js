@@ -135,10 +135,7 @@ async function processJob(job) {
  */
 function createMatchingEngineWorker() {
   const worker = new Worker(QUEUE_NAME, processJob, {
-    connection: {
-      url: config.redis.url,
-      maxRetriesPerRequest: null,
-    },
+    connection: require('../redis/queues').connection,
     concurrency: 1, // Sequential processing to avoid race conditions on channel assignment
     limiter: {
       max: 100,

@@ -10,9 +10,15 @@
 const { Queue } = require('bullmq');
 const config = require('../config');
 
+const redisUrl = new URL(config.redis.url);
+const isTLS = config.redis.url.startsWith('rediss://');
+
 const connection = {
-  host: new URL(config.redis.url).hostname || 'localhost',
-  port: parseInt(new URL(config.redis.url).port, 10) || 6379,
+  host: redisUrl.hostname,
+  port: parseInt(redisUrl.port, 10) || 6379,
+  username: redisUrl.username || 'default',
+  password: decodeURIComponent(redisUrl.password),
+  ...(isTLS && { tls: { rejectUnauthorized: false } }),
 };
 
 const defaultOpts = { connection };

@@ -153,12 +153,4 @@ FROM channels c
 WHERE c.status = 'idle'
   AND c.idle_since IS NOT NULL;
 
--- Authentication User Login
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 CREATE UNIQUE INDEX ON mv_idle_channel_loss(channel_id);
