@@ -29,18 +29,17 @@ router.post('/article-published', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid webhook secret' });
     }
 
-    const { id, externalId, url, category, publishedAt } = req.body;
+    const { externalId, url, category, publishedAt } = req.body;
 
-    if (!id || !externalId) {
-      return res.status(400).json({ error: 'id and externalId are required' });
+    if (!externalId) {
+      return res.status(400).json({ error: 'externalId is required' });
     }
     if (!publishedAt) {
       return res.status(400).json({ error: 'publishedAt is required' });
     }
 
-    // Create article in DB
+    // Create article in DB — id is auto-generated
     const article = await queries.createArticle({
-      id: Number(id),
       externalId: String(externalId),
       url:        url || null,
       category:   category || null,

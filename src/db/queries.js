@@ -16,12 +16,12 @@ const { pool } = require('./pool');
 /**
  * Create a new article.
  */
-async function createArticle({ id, externalId, url, category, status = 'pending', publishedAt }) {
+async function createArticle({ externalId, url, category, status = 'pending', publishedAt }) {
   const sql = `
-    INSERT INTO articles (id, external_id, url, category, status, published_at)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO articles (external_id, url, category, status, published_at)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING *`;
-  const { rows } = await pool.query(sql, [id, externalId, url, category, status, publishedAt]);
+  const { rows } = await pool.query(sql, [externalId, url, category, status, publishedAt]);
   return rows[0];
 }
 
