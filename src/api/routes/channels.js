@@ -100,6 +100,19 @@ router.get('/idle', async (req, res, next) => {
   }
 });
 
+// ── GET /api/channels/idle-loss — must come before /:id ───────────────────
+
+router.get('/idle-loss', async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const result = await queries.getIdleChannelLoss({ limit, offset });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/channels/:id ──────────────────────────────────────────────────
 
 router.get('/:id', async (req, res, next) => {

@@ -481,7 +481,7 @@ async function getRecentAlerts(limit = 50) {
              a.id AS entity_id,
              a.external_id AS entity_name,
              a.expired_at AS occurred_at,
-             json_build_object('reason', a.expiry_reason) AS details
+             jsonb_build_object('reason', a.expiry_reason) AS details
       FROM articles a
       WHERE a.status = 'expired'
       ORDER BY a.expired_at DESC
@@ -493,7 +493,7 @@ async function getRecentAlerts(limit = 50) {
              r.id AS entity_id,
              c.external_id AS entity_name,
              r.pulled_at AS occurred_at,
-             json_build_object('revenue', r.revenue, 'channel_id', r.channel_id) AS details
+             jsonb_build_object('revenue', r.revenue, 'channel_id', r.channel_id) AS details
       FROM revenue_events r
       JOIN channels c ON c.id = r.channel_id
       WHERE r.article_id IS NULL
