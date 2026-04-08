@@ -179,10 +179,7 @@ async function handleDisapproved(channelId, oldStatus) {
  */
 function createChannelStateWorker() {
   const worker = new Worker(QUEUE_NAME, processJob, {
-    connection: {
-      url: config.redis.url,
-      maxRetriesPerRequest: null,
-    },
+    connection: require('../redis/queues').connection,
     concurrency: 1, // Sequential to avoid race conditions on state transitions
   });
 

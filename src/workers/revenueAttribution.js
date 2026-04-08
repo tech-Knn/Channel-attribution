@@ -222,10 +222,7 @@ async function processChannelRevenue(record, periodStart, periodEnd) {
  */
 function createRevenueAttributionWorker() {
   const worker = new Worker(QUEUE_NAME, processJob, {
-    connection: {
-      url: config.redis.url,
-      maxRetriesPerRequest: null,
-    },
+    connection: require('../redis/queues').connection,
     concurrency: 1, // One pull at a time — no overlap
   });
 
