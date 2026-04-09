@@ -21,10 +21,10 @@ const router = Router();
 
 router.post('/', async (req, res, next) => {
   try {
-    const { id, externalId, status } = req.body;
+    const { id, channelId, status } = req.body;
 
-    if (!id || !externalId) {
-      return res.status(400).json({ error: 'id and externalId are required' });
+    if (!id || !channelId) {
+      return res.status(400).json({ error: 'id and channelId are required' });
     }
 
     const validStatuses = ['idle', 'assigned', 'disapproved', 'manual_review'];
@@ -32,7 +32,7 @@ router.post('/', async (req, res, next) => {
 
     const channel = await queries.createChannel({
       id: Number(id),
-      externalId,
+      channelId,
       status: channelStatus,
     });
 
@@ -54,7 +54,7 @@ router.post('/', async (req, res, next) => {
     res.status(201).json({ data: channel });
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Channel with this ID or external_id already exists' });
+      return res.status(409).json({ error: 'Channel with this id or channelId already exists' });
     }
     next(err);
   }

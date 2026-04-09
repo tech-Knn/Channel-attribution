@@ -16,12 +16,12 @@ const { pool } = require('./pool');
 /**
  * Create a new article.
  */
-async function createArticle({ externalId, url, category, status = 'pending', publishedAt }) {
+async function createArticle({ articleId, url, category, status = 'pending', publishedAt }) {
   const sql = `
-    INSERT INTO articles (external_id, url, category, status, published_at)
+    INSERT INTO articles (article_id, url, category, status, published_at)
     VALUES ($1, $2, $3, $4, $5)
     RETURNING *`;
-  const { rows } = await pool.query(sql, [externalId, url, category, status, publishedAt]);
+  const { rows } = await pool.query(sql, [articleId, url, category, status, publishedAt]);
   return rows[0];
 }
 
@@ -106,12 +106,12 @@ async function updateArticleStatus(id, status, extra = {}, client = null) {
 /**
  * Create a new channel.
  */
-async function createChannel({ id, externalId, status = 'idle' }) {
+async function createChannel({ id, channelId, status = 'idle' }) {
   const sql = `
-    INSERT INTO channels (id, external_id, status, idle_since)
+    INSERT INTO channels (id, channel_id, status, idle_since)
     VALUES ($1, $2, $3, NOW())
     RETURNING *`;
-  const { rows } = await pool.query(sql, [id, externalId, status]);
+  const { rows } = await pool.query(sql, [id, channelId, status]);
   return rows[0];
 }
 
@@ -123,7 +123,7 @@ async function getChannelById(id) {
     SELECT c.*,
            a.id AS current_assignment_id,
            a.article_id AS current_article_id,
-           art.external_id AS current_article_external_id
+           art.article_id AS current_article_ref
     FROM channels c
     LEFT JOIN assignments a ON a.channel_id = c.id AND a.status = 'active'
     LEFT JOIN articles art ON art.id = a.article_id
@@ -193,7 +193,7 @@ async function updateChannelStatus(id, status, extra = {}, client = null) {
  */
 async function getChannelAssignmentHistory(channelId, limit = 20) {
   const sql = `
-    SELECT a.*, art.external_id AS article_external_id, art.url AS article_url
+    SELECT a.*, art.article_id AS article_id, art.url AS article_url
     FROM assignments a
     JOIN articles art ON art.id = a.article_id
     WHERE a.channel_id = $1
@@ -255,9 +255,9 @@ async function getActiveAssignmentForArticle(articleId) {
 async function listActiveAssignments() {
   const sql = `
     SELECT a.*,
-           art.external_id AS article_external_id,
+           art.article_id AS article_id,
            art.url AS article_url,
-           c.external_id AS channel_external_id
+           c.channel_id AS channel_id
     FROM assignments a
     JOIN articles art ON art.id = a.article_id
     JOIN channels c ON c.id = a.channel_id
@@ -283,9 +283,9 @@ async function listAssignments({ status, limit = 50, offset = 0 } = {}) {
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const sql = `
     SELECT a.*,
-           art.external_id AS article_external_id,
+           art.article_id AS article_id,
            art.url AS article_url,
-           c.external_id AS channel_external_id
+           c.channel_id AS channel_id
     FROM assignments a
     JOIN articles art ON art.id = a.article_id
     JOIN channels c ON c.id = a.channel_id
@@ -372,7 +372,7 @@ async function getRevenueByChannel({ limit = 50, offset = 0, sortBy = 'total_rev
  */
 async function getUnattributedRevenue({ limit = 50, offset = 0 } = {}) {
   const sql = `
-    SELECT r.*, c.external_id AS channel_external_id
+    SELECT r.*, c.channel_id AS channel_id
     FROM revenue_events r
     JOIN channels c ON c.id = r.channel_id
     WHERE r.attributed = FALSE OR r.article_id IS NULL
@@ -394,7 +394,7 @@ async function getUnattributedRevenue({ limit = 50, offset = 0 } = {}) {
  */
 async function getArticleRevenue(articleId) {
   const sql = `
-    SELECT r.*, c.external_id AS channel_external_id
+    SELECT r.*, c.channel_id AS channel_id
     FROM revenue_events r
     JOIN channels c ON c.id = r.channel_id
     WHERE r.article_id = $1
@@ -479,7 +479,7 @@ async function getRecentAlerts(limit = 50) {
     (
       SELECT 'expiry' AS alert_type,
              a.id AS entity_id,
-             a.external_id AS entity_name,
+             a.article_id AS entity_name,
              a.expired_at AS occurred_at,
              jsonb_build_object('reason', a.expiry_reason) AS details
       FROM articles a
@@ -491,7 +491,7 @@ async function getRecentAlerts(limit = 50) {
     (
       SELECT 'orphan_revenue' AS alert_type,
              r.id AS entity_id,
-             c.external_id AS entity_name,
+             c.channel_id AS entity_name,
              r.pulled_at AS occurred_at,
              jsonb_build_object('revenue', r.revenue, 'channel_id', r.channel_id) AS details
       FROM revenue_events r
@@ -504,7 +504,7 @@ async function getRecentAlerts(limit = 50) {
     (
       SELECT 'disapproval' AS alert_type,
              cl.channel_id AS entity_id,
-             c.external_id AS entity_name,
+             c.channel_id AS entity_name,
              cl.created_at AS occurred_at,
              cl.metadata AS details
       FROM channel_log cl

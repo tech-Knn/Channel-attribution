@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+body {
+  background: #0d0d0d;
+  color: #d4d4d8;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+/* ─── Light theme overrides ─── */
+[data-theme="light"] body { background: #f5f5f7; color: #333333; }
+
+/* Backgrounds */
+[data-theme="light"] .bg-\[\#0d0d0d\] { background-color: #f5f5f7 !important; }
+[data-theme="light"] .bg-\[\#111111\] { background-color: #ffffff !important; }
+[data-theme="light"] .bg-\[\#111\]    { background-color: #ffffff !important; }
+[data-theme="light"] .bg-\[\#1c1c1c\] { background-color: #ffffff !important; }
+[data-theme="light"] .bg-\[\#161616\] { background-color: #ebebf0 !important; }
+
+/* Borders */
+[data-theme="light"] .border-white\/\[0\.07\] { border-color: rgba(0,0,0,0.1) !important; }
+[data-theme="light"] .border-white\/\[0\.06\] { border-color: rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .border-white\/\[0\.1\]  { border-color: rgba(0,0,0,0.14) !important; }
+[data-theme="light"] .border-white\/\[0\.12\] { border-color: rgba(0,0,0,0.18) !important; }
+
+/* Dividers */
+[data-theme="light"] .divide-white\/\[0\.04\] > * + * { border-color: rgba(0,0,0,0.07) !important; }
+
+/* Text */
+[data-theme="light"] .text-white   { color: #111111 !important; }
+[data-theme="light"] .text-zinc-200 { color: #222222 !important; }
+[data-theme="light"] .text-zinc-300 { color: #444444 !important; }
+[data-theme="light"] .text-zinc-400 { color: #555555 !important; }
+[data-theme="light"] .text-zinc-500 { color: #666666 !important; }
+[data-theme="light"] .text-zinc-600 { color: #777777 !important; }
+[data-theme="light"] .placeholder-zinc-600::placeholder { color: #aaaaaa !important; }
+
+/* Overlay backgrounds */
+[data-theme="light"] .bg-white\/\[0\.04\] { background-color: rgba(0,0,0,0.04) !important; }
+[data-theme="light"] .bg-white\/\[0\.05\] { background-color: rgba(0,0,0,0.05) !important; }
+[data-theme="light"] .bg-white\/\[0\.06\] { background-color: rgba(0,0,0,0.06) !important; }
+[data-theme="light"] .bg-white\/\[0\.08\] { background-color: rgba(0,0,0,0.07) !important; }
+[data-theme="light"] .bg-white\/5        { background-color: rgba(0,0,0,0.04) !important; }
+
+/* Hover overlays */
+[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(0,0,0,0.05) !important; }
+
+/* Header toggle button in light mode */
+[data-theme="light"] .border-white\/\[0\.1\].rounded-md { border-color: rgba(0,0,0,0.14) !important; }
+[data-theme="light"] .hover\:border-white\/\[0\.2\]:hover { border-color: rgba(0,0,0,0.22) !important; }
+
+/* Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+
+/* Active nav link */
+[data-theme="light"] .bg-white\/\[0\.08\] { background-color: rgba(0,0,0,0.07) !important; }
