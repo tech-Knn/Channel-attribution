@@ -160,7 +160,7 @@ async function handleDisapproved(channelId, oldStatus) {
   // Send Slack alert
   const channel = await queries.getChannelById(channelId);
   await sendAlert(
-    `Channel ${channelId} (${channel?.external_id || 'unknown'}) has been disapproved.\n` +
+    `Channel ${channelId} (${channel?.channel_id || 'unknown'}) has been disapproved.\n` +
     `Previous status: ${oldStatus}. Requires manual review.`,
     'warning',
   );

@@ -137,9 +137,9 @@ async function processJob(job) {
 async function processChannelRevenue(record, periodStart, periodEnd) {
   const { channelId: externalChannelId, impressions, clicks, revenue } = record;
 
-  // Look up the channel in our database by external_id
+  // Look up the channel in our database by channel_id
   const { rows } = await pool.query(
-    'SELECT * FROM channels WHERE external_id = $1',
+    'SELECT * FROM channels WHERE channel_id = $1',
     [String(externalChannelId)],
   );
   const channel = rows[0];

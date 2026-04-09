@@ -19,19 +19,18 @@ const router = Router();
 
 router.post('/', async (req, res, next) => {
   try {
-    const { id, externalId, url, category, publishedAt } = req.body;
+    const { articleId, url, category, publishedAt } = req.body;
 
     // Validation
-    if (!id || !externalId) {
-      return res.status(400).json({ error: 'id and externalId are required' });
+    if (!articleId) {
+      return res.status(400).json({ error: 'articleId is required' });
     }
     if (!publishedAt) {
       return res.status(400).json({ error: 'publishedAt is required' });
     }
 
     const article = await queries.createArticle({
-      id: Number(id),
-      externalId,
+      articleId,
       url: url || null,
       category: category || null,
       status: 'pending',
@@ -41,7 +40,7 @@ router.post('/', async (req, res, next) => {
     // Trigger assignment job via BullMQ
     await queues.articleAssignment.add('assign-article', {
       articleId: article.id,
-      externalId: article.external_id,
+      externalId: article.article_id,
     }, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
@@ -50,7 +49,7 @@ router.post('/', async (req, res, next) => {
     res.status(201).json({ data: article, message: 'Article created, assignment job queued' });
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Article with this ID or external_id already exists' });
+      return res.status(409).json({ error: 'Article with this articleId already exists' });
     }
     next(err);
   }

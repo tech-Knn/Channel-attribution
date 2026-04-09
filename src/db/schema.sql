@@ -16,7 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- ── channels ────────────────────────────────────────────────
 CREATE TABLE channels (
     id              BIGINT PRIMARY KEY,
-    external_id     VARCHAR(20) NOT NULL UNIQUE,  -- AFS channel ID
+    channel_id      VARCHAR(20) NOT NULL UNIQUE,  -- AFS channel ID
     status          VARCHAR(20) NOT NULL DEFAULT 'idle',
                     -- idle | assigned | disapproved | manual_review
     idle_since      TIMESTAMPTZ,
@@ -31,7 +31,7 @@ CREATE INDEX idx_channels_idle_since ON channels(idle_since) WHERE status = 'idl
 -- ── articles ────────────────────────────────────────────────
 CREATE TABLE articles (
     id              BIGSERIAL PRIMARY KEY,
-    external_id     VARCHAR(100) NOT NULL UNIQUE,  -- CMS article ID
+    article_id      VARCHAR(100) NOT NULL UNIQUE,  -- CMS article ID
     url             TEXT,
     category        VARCHAR(50),
     status          VARCHAR(20) NOT NULL DEFAULT 'pending',
@@ -103,8 +103,8 @@ CREATE INDEX idx_channel_log_channel ON channel_log(channel_id, created_at);
 -- Revenue per article (refreshed every 15 min)
 CREATE MATERIALIZED VIEW mv_revenue_per_article AS
 SELECT
-    a.id AS article_id,
-    a.external_id,
+    a.id AS db_id,
+    a.article_id,
     a.url,
     a.category,
     a.published_at,
@@ -117,15 +117,15 @@ SELECT
          ELSE 0 END AS rpm
 FROM articles a
 LEFT JOIN revenue_events r ON r.article_id = a.id
-GROUP BY a.id, a.external_id, a.url, a.category, a.published_at, a.status;
+GROUP BY a.id, a.article_id, a.url, a.category, a.published_at, a.status;
 
-CREATE UNIQUE INDEX ON mv_revenue_per_article(article_id);
+CREATE UNIQUE INDEX ON mv_revenue_per_article(db_id);
 
 -- Revenue per channel (refreshed every 15 min)
 CREATE MATERIALIZED VIEW mv_revenue_per_channel AS
 SELECT
-    c.id AS channel_id,
-    c.external_id,
+    c.id AS db_id,
+    c.channel_id,
     c.status AS channel_status,
     COUNT(DISTINCT r.article_id) AS articles_served,
     COALESCE(SUM(r.impressions), 0) AS total_impressions,
@@ -133,15 +133,15 @@ SELECT
     COALESCE(SUM(r.revenue), 0) AS total_revenue
 FROM channels c
 LEFT JOIN revenue_events r ON r.channel_id = c.id
-GROUP BY c.id, c.external_id, c.status;
+GROUP BY c.id, c.channel_id, c.status;
 
-CREATE UNIQUE INDEX ON mv_revenue_per_channel(channel_id);
+CREATE UNIQUE INDEX ON mv_revenue_per_channel(db_id);
 
 -- Idle channel loss estimate (refreshed hourly)
 CREATE MATERIALIZED VIEW mv_idle_channel_loss AS
 SELECT
-    c.id                                          AS channel_id,
-    c.external_id,
+    c.id                                          AS db_id,
+    c.channel_id,
     c.idle_since,
     EXTRACT(EPOCH FROM (NOW() - c.idle_since)) / 3600.0 AS idle_hours,
     -- Estimate lost revenue: avg RPM of this channel * idle hours
@@ -153,4 +153,4 @@ FROM channels c
 WHERE c.status = 'idle'
   AND c.idle_since IS NOT NULL;
 
-CREATE UNIQUE INDEX ON mv_idle_channel_loss(channel_id);
+CREATE UNIQUE INDEX ON mv_idle_channel_loss(db_id);

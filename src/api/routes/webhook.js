@@ -29,10 +29,10 @@ router.post('/article-published', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid webhook secret' });
     }
 
-    const { externalId, url, category, publishedAt } = req.body;
+    const { articleId, url, category, publishedAt } = req.body;
 
-    if (!externalId) {
-      return res.status(400).json({ error: 'externalId is required' });
+    if (!articleId) {
+      return res.status(400).json({ error: 'articleId is required' });
     }
     if (!publishedAt) {
       return res.status(400).json({ error: 'publishedAt is required' });
@@ -40,7 +40,7 @@ router.post('/article-published', async (req, res, next) => {
 
     // Create article in DB — id is auto-generated
     const article = await queries.createArticle({
-      externalId: String(externalId),
+      articleId: String(articleId),
       url:        url || null,
       category:   category || null,
       status:     'pending',
@@ -50,25 +50,25 @@ router.post('/article-published', async (req, res, next) => {
     // Queue the matching engine — it will pick the oldest idle channel
     await queues.articleAssignment.add('assign-article', {
       articleId: article.id,
-      externalId: article.external_id,
+      externalId: article.article_id,
     }, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
     });
 
-    console.log(`[webhook] Article ${article.external_id} received → assignment queued`);
+    console.log(`[webhook] Article ${article.article_id} received → assignment queued`);
 
     // Respond immediately — assignment happens async
     res.status(202).json({
       message: 'Article received. Channel assignment in progress.',
       articleId: article.id,
-      externalId: article.external_id,
+      articleRef: article.article_id,
     });
 
   } catch (err) {
     // Article already exists — safe to ignore (idempotent)
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Article already registered', externalId: req.body.externalId });
+      return res.status(409).json({ error: 'Article already registered', articleId: req.body.articleId });
     }
     next(err);
   }
