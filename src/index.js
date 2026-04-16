@@ -55,11 +55,13 @@ function loadWorkers() {
   const { createChannelStateWorker }        = require('./workers/channelState');
   const { createRevenueAttributionWorker }  = require('./workers/revenueAttribution');
   const { createExpiryWorker }              = require('./workers/expiryWorker');
+  const { createGaMonitorWorker }           = require('./workers/gaMonitor');
 
   createMatchingEngineWorker();
   createChannelStateWorker();
   createRevenueAttributionWorker();
   createExpiryWorker();
+  createGaMonitorWorker();
 
   console.log('[boot] workers started');
 }

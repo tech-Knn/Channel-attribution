@@ -9,10 +9,10 @@
     "dev": "node --watch src/index.js",
     "seed": "node scripts/seed.js",
     "db:schema": "psql $DATABASE_URL -f src/db/schema.sql",
+    "db:migrate": "psql $DATABASE_URL -f src/db/migrations/003_ga4_integration.sql",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start":"node index.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "channel-attribution",
@@ -22,6 +22,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google-analytics/data": "^5.2.1",
     "axios": "^1.7.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.0.0",

@@ -25,9 +25,10 @@ const defaultOpts = { connection };
 
 const queues = {
   articleAssignment: new Queue('article-assignment', defaultOpts),
-  channelState: new Queue('channel-state', defaultOpts),
+  channelState:      new Queue('channel-state', defaultOpts),
   revenueAttribution: new Queue('revenue-attribution', defaultOpts),
-  articleExpiry: new Queue('article-expiry', defaultOpts),
+  articleExpiry:     new Queue('article-expiry', defaultOpts),
+  gaMonitor:         new Queue('article-reactivation', defaultOpts),
 };
 
 /**
@@ -41,6 +42,11 @@ async function setupRepeatableJobs() {
 
   // Expiry check every hour
   await queues.articleExpiry.add('check-expiry', {}, {
+    repeat: { every: 60 * 60 * 1000 },
+  });
+
+  // GA4 reactivation check every 1 hour
+  await queues.gaMonitor.add('ga-reactivation-poll', {}, {
     repeat: { every: 60 * 60 * 1000 },
   });
 

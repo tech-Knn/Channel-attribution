@@ -30,6 +30,14 @@ const config = {
     webhookUrl: process.env.SLACK_WEBHOOK_URL || '',
   },
 
+  // ── Google Analytics 4 ─────────────────────────────────────
+  ga4: {
+    propertyId:            process.env.GA4_PROPERTY_ID         || '',
+    measurementId:         process.env.GA4_MEASUREMENT_ID      || '',
+    serviceAccountPath:    process.env.GA_SERVICE_ACCOUNT_PATH || './ga4-credentials.json',
+    reactivationThreshold: parseInt(process.env.GA4_REACTIVATION_THRESHOLD, 10) || 30,
+  },
+
   // ── Application ─────────────────────────────────────────────
   app: {
     port: parseInt(process.env.PORT, 10) || 3000,

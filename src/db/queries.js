@@ -551,6 +551,7 @@ async function getZeroRevenueArticles(hoursMin = 72, hoursMax = 96) {
     WHERE a.status IN ('assigned', 'active')
       AND a.published_at <= NOW() - INTERVAL '${hoursMin} hours'
       AND a.published_at >= NOW() - INTERVAL '${hoursMax} hours'
+      AND (a.last_traffic_at IS NULL OR a.last_traffic_at < NOW() - INTERVAL '24 hours')
     GROUP BY a.id
     HAVING COALESCE(SUM(r.impressions), 0) = 0 AND COALESCE(SUM(r.clicks), 0) = 0`;
   const { rows } = await pool.query(sql);
@@ -645,4 +646,114 @@ module.exports = {
   getZeroRevenueArticles,
   closeAssignmentByArticle,
   upsertRevenueEvent,
+
+  // GA4 monitoring
+  getArticlesForGaMonitor,
+  getExpiredArticlesForReactivation,
+  getActiveArticlesWithUrl,
+  upsertArticleGaMetrics,
+  reactivateArticle,
+  addArticleLifecycleEvent,
+  updateArticleLastTrafficAt,
+  getArticleGaMetrics,
+  getArticleLifecycle,
 };
+
+// ---------------------------------------------------------------------------
+// GA4 monitoring queries
+// ---------------------------------------------------------------------------
+
+async function getExpiredArticlesForReactivation() {
+  const sql = `
+    SELECT id, article_id, url, status, last_traffic_at
+    FROM   articles
+    WHERE  status = 'expired'
+      AND  url IS NOT NULL
+      AND  (expiry_reason IS NULL OR expiry_reason != 'disapproved')
+    ORDER BY id`;
+  const { rows } = await pool.query(sql);
+  return rows;
+}
+
+async function getActiveArticlesWithUrl() {
+  const sql = `
+    SELECT id, article_id, url
+    FROM   articles
+    WHERE  status IN ('active', 'assigned')
+      AND  url IS NOT NULL
+    ORDER BY id`;
+  const { rows } = await pool.query(sql);
+  return rows;
+}
+
+// kept for API route compatibility
+async function getArticlesForGaMonitor() {
+  const sql = `
+    SELECT id, article_id, url, status, last_traffic_at
+    FROM   articles
+    WHERE  status IN ('active', 'assigned', 'expired')
+      AND  url IS NOT NULL
+      AND  (status != 'expired' OR (expiry_reason IS NULL OR expiry_reason != 'disapproved'))
+    ORDER BY id`;
+  const { rows } = await pool.query(sql);
+  return rows;
+}
+
+async function upsertArticleGaMetrics(articleId, { activeUsers, sessions, pageviews }) {
+  const sql = `
+    INSERT INTO article_ga_metrics (article_id, users_ga, sessions, pageviews, checked_at)
+    VALUES ($1, $2, $3, $4, NOW())
+    ON CONFLICT (article_id) DO UPDATE
+      SET users_ga   = EXCLUDED.users_ga,
+          sessions   = EXCLUDED.sessions,
+          pageviews  = EXCLUDED.pageviews,
+          checked_at = EXCLUDED.checked_at`;
+  await pool.query(sql, [articleId, activeUsers, sessions, pageviews]);
+}
+
+async function reactivateArticle(articleId, client) {
+  const db = client || pool;
+  const sql = `
+    UPDATE articles
+    SET    status         = 'pending',
+           expiry_reason  = NULL,
+           expired_at     = NULL,
+           reactivated_at = NOW()
+    WHERE  id = $1
+    RETURNING *`;
+  const { rows } = await db.query(sql, [articleId]);
+  return rows[0];
+}
+
+async function addArticleLifecycleEvent(articleId, event, triggeredBy, activeUsers = null) {
+  const sql = `
+    INSERT INTO article_lifecycle (article_id, event, triggered_by, active_users)
+    VALUES ($1, $2, $3, $4)`;
+  await pool.query(sql, [articleId, event, triggeredBy, activeUsers]);
+}
+
+async function updateArticleLastTrafficAt(articleId) {
+  await pool.query(
+    `UPDATE articles SET last_traffic_at = NOW() WHERE id = $1`,
+    [articleId],
+  );
+}
+
+async function getArticleGaMetrics(articleId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM article_ga_metrics WHERE article_id = $1`,
+    [articleId],
+  );
+  return rows[0] || null;
+}
+
+async function getArticleLifecycle(articleId) {
+  const { rows } = await pool.query(
+    `SELECT id, event, triggered_by, active_users, created_at
+     FROM article_lifecycle
+     WHERE article_id = $1
+     ORDER BY created_at DESC`,
+    [articleId],
+  );
+  return rows;
+}
