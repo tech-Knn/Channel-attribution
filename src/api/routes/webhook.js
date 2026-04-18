@@ -29,7 +29,7 @@ router.post('/article-published', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid webhook secret' });
     }
 
-    const { articleId, url, category, publishedAt } = req.body;
+    const { articleId, url, category, publishedAt, domain } = req.body;
 
     if (!articleId) {
       return res.status(400).json({ error: 'articleId is required' });
@@ -38,6 +38,8 @@ router.post('/article-published', async (req, res, next) => {
       return res.status(400).json({ error: 'publishedAt is required' });
     }
 
+    const articleDomain = domain || 'articlespectrum.com';
+
     // Create article in DB — id is auto-generated
     const article = await queries.createArticle({
       articleId: String(articleId),
@@ -45,12 +47,14 @@ router.post('/article-published', async (req, res, next) => {
       category:   category || null,
       status:     'pending',
       publishedAt: new Date(publishedAt),
+      domain:     articleDomain,
     });
 
-    // Queue the matching engine — it will pick the oldest idle channel
+    // Queue the matching engine — it will pick the oldest idle channel for this domain
     await queues.articleAssignment.add('assign-article', {
       articleId: article.id,
       externalId: article.article_id,
+      domain:    articleDomain,
     }, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },

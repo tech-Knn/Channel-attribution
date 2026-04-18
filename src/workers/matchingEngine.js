@@ -29,13 +29,13 @@ const QUEUE_NAME = 'article-assignment';
  * @param {import('bullmq').Job} job
  */
 async function processJob(job) {
-  const { articleId } = job.data;
+  const { articleId, domain = 'articlespectrum.com' } = job.data;
 
   if (!articleId) {
     throw new Error('Job missing required field: articleId');
   }
 
-  console.log(`[matchingEngine] Processing assignment for article ${articleId}`);
+  console.log(`[matchingEngine] Processing assignment for article ${articleId} (domain: ${domain})`);
 
   // Verify article exists and is in a valid state
   const article = await queries.getArticleById(articleId);
@@ -49,13 +49,13 @@ async function processJob(job) {
     return { status: 'skipped', reason: 'invalid_article_status' };
   }
 
-  // Pop the longest-idle channel
-  const idle = await popOldestIdle();
+  // Pop the longest-idle channel from the domain-specific queue
+  const idle = await popOldestIdle(domain);
 
   if (!idle) {
-    // No idle channel available — park the article in the waiting queue
-    await addToWaitingQueue(articleId);
-    console.log(`[matchingEngine] No idle channels — article ${articleId} added to waiting queue`);
+    // No idle channel available — park the article in the domain waiting queue
+    await addToWaitingQueue(articleId, domain);
+    console.log(`[matchingEngine] No idle channels for ${domain} — article ${articleId} added to waiting queue`);
     return { status: 'queued', articleId };
   }
 
@@ -114,9 +114,9 @@ async function processJob(job) {
     await client.query('ROLLBACK');
     console.error(`[matchingEngine] Assignment failed for article ${articleId}:`, err.message);
 
-    // Put the channel back in the idle queue since we failed to assign it
+    // Put the channel back in the domain idle queue since we failed to assign it
     const { addToIdleQueue } = require('../redis/channelQueue');
-    await addToIdleQueue(channelId, idle.idleSince);
+    await addToIdleQueue(channelId, idle.idleSince, domain);
     console.log(`[matchingEngine] Channel ${channelId} returned to idle queue after failure`);
 
     throw err; // Let BullMQ retry

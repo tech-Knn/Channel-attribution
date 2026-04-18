@@ -24,16 +24,17 @@ async function syncRedis() {
     console.log(`[sync] Cleared ${keys.length} existing Redis keys`);
   }
 
-  // 1. Load idle channels into sorted set
+  // 1. Load idle channels into domain-scoped sorted sets
   const { rows: idleChannels } = await pool.query(
-    `SELECT id, idle_since FROM channels WHERE status = 'idle' ORDER BY idle_since ASC`
+    `SELECT id, idle_since, domain FROM channels WHERE status = 'idle' ORDER BY idle_since ASC`
   );
-  
+
   for (const ch of idleChannels) {
     const score = ch.idle_since ? new Date(ch.idle_since).getTime() : Date.now();
-    await addToIdleQueue(ch.id, score);
+    const domain = ch.domain || 'articlespectrum.com';
+    await addToIdleQueue(ch.id, score, domain);
   }
-  console.log(`[sync] Added ${idleChannels.length} idle channels to Redis queue`);
+  console.log(`[sync] Added ${idleChannels.length} idle channels to domain-scoped Redis queues`);
 
   // 2. Load active assignments into state store
   const { rows: activeAssignments } = await pool.query(
