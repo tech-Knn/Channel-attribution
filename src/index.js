@@ -72,6 +72,48 @@ async function startAPI() {
   await start(port);
 }
 
+/**
+ * On every startup, find pending articles with no active assignment
+ * and re-queue them so the matching engine assigns channels automatically.
+ * This heals the system after restarts or Redis wipes.
+ *
+ * NOTE: Only touches 'pending' articles.
+ *       Expired article reactivation is handled separately by gaMonitor worker.
+ */
+async function reconcilePendingArticles() {
+  const { queues } = require('./redis/queues');
+
+  const { rows: pending } = await pool.query(`
+    SELECT a.id, a.article_id, a.domain
+    FROM articles a
+    LEFT JOIN assignments asgn
+      ON asgn.article_id = a.id AND asgn.status = 'active'
+    WHERE a.status = 'pending'
+      AND asgn.id IS NULL
+    ORDER BY a.published_at ASC
+  `);
+
+  if (pending.length === 0) {
+    console.log('[boot] reconcile: no pending articles — all good');
+    return;
+  }
+
+  console.log(`[boot] reconcile: ${pending.length} pending article(s) found — re-queuing...`);
+
+  for (const article of pending) {
+    await queues.articleAssignment.add('assign-article', {
+      articleId: article.id,
+      externalId: article.article_id,
+      domain: article.domain || 'articlespectrum.com',
+    }, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+    });
+  }
+
+  console.log(`[boot] reconcile: ${pending.length} job(s) queued for matching engine`);
+}
+
 let shuttingDown = false;
 
 async function shutdown(signal) {
@@ -99,6 +141,7 @@ async function main() {
     await setupRepeatableJobs();
     loadWorkers();
     await startAPI();
+    await reconcilePendingArticles();
     console.log('[boot] system ready');
   } catch (err) {
     console.error('[boot] fatal error during startup:', err);
