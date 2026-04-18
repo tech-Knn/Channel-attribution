@@ -17,6 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE TABLE channels (
     id              BIGINT PRIMARY KEY,
     channel_id      VARCHAR(20) NOT NULL UNIQUE,  -- AFS channel ID
+    domain          VARCHAR(100) NOT NULL DEFAULT 'articlespectrum.com',
     status          VARCHAR(20) NOT NULL DEFAULT 'idle',
                     -- idle | assigned | disapproved | manual_review
     idle_since      TIMESTAMPTZ,
@@ -32,6 +33,7 @@ CREATE INDEX idx_channels_idle_since ON channels(idle_since) WHERE status = 'idl
 CREATE TABLE articles (
     id              BIGSERIAL PRIMARY KEY,
     article_id      VARCHAR(100) NOT NULL UNIQUE,  -- CMS article ID
+    domain          VARCHAR(100) NOT NULL DEFAULT 'articlespectrum.com',
     url             TEXT,
     category        VARCHAR(50),
     status          VARCHAR(20) NOT NULL DEFAULT 'pending',

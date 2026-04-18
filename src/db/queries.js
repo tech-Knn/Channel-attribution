@@ -16,12 +16,12 @@ const { pool } = require('./pool');
 /**
  * Create a new article.
  */
-async function createArticle({ articleId, url, category, status = 'pending', publishedAt }) {
+async function createArticle({ articleId, url, category, status = 'pending', publishedAt, domain = 'articlespectrum.com' }) {
   const sql = `
-    INSERT INTO articles (article_id, url, category, status, published_at)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO articles (article_id, url, category, status, published_at, domain)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *`;
-  const { rows } = await pool.query(sql, [articleId, url, category, status, publishedAt]);
+  const { rows } = await pool.query(sql, [articleId, url, category, status, publishedAt, domain]);
   return rows[0];
 }
 
@@ -106,12 +106,12 @@ async function updateArticleStatus(id, status, extra = {}, client = null) {
 /**
  * Create a new channel.
  */
-async function createChannel({ id, channelId, status = 'idle' }) {
+async function createChannel({ id, channelId, status = 'idle', domain = 'articlespectrum.com' }) {
   const sql = `
-    INSERT INTO channels (id, channel_id, status, idle_since)
-    VALUES ($1, $2, $3, NOW())
+    INSERT INTO channels (id, channel_id, status, idle_since, domain)
+    VALUES ($1, $2, $3, NOW(), $4)
     RETURNING *`;
-  const { rows } = await pool.query(sql, [id, channelId, status]);
+  const { rows } = await pool.query(sql, [id, channelId, status, domain]);
   return rows[0];
 }
 

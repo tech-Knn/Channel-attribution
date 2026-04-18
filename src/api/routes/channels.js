@@ -21,7 +21,7 @@ const router = Router();
 
 router.post('/', async (req, res, next) => {
   try {
-    const { id, channelId, status } = req.body;
+    const { id, channelId, status, domain } = req.body;
 
     if (!id || !channelId) {
       return res.status(400).json({ error: 'id and channelId are required' });
@@ -34,6 +34,7 @@ router.post('/', async (req, res, next) => {
       id: Number(id),
       channelId,
       status: channelStatus,
+      domain: domain || 'articlespectrum.com',
     });
 
     // Log creation event

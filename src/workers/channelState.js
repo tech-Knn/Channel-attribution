@@ -45,16 +45,17 @@ async function processJob(job) {
   }
 
   const oldStatus = channel.status;
+  const domain = channel.domain || 'articlespectrum.com';
 
   switch (newStatus) {
     case 'idle':
-      return await handleIdle(channelId, oldStatus);
+      return await handleIdle(channelId, oldStatus, domain);
 
     case 'active':
-      return await handleActive(channelId);
+      return await handleActive(channelId, domain);
 
     case 'disapproved':
-      return await handleDisapproved(channelId, oldStatus);
+      return await handleDisapproved(channelId, oldStatus, domain);
 
     default:
       console.warn(`[channelState] Unknown status "${newStatus}" for channel ${channelId}`);
@@ -65,7 +66,7 @@ async function processJob(job) {
 /**
  * Channel becomes idle — add to queue, try to assign a waiting article.
  */
-async function handleIdle(channelId, oldStatus) {
+async function handleIdle(channelId, oldStatus, domain = 'articlespectrum.com') {
   const now = new Date();
 
   if (oldStatus === 'assigned') {
@@ -88,12 +89,12 @@ async function handleIdle(channelId, oldStatus) {
     previousStatus: oldStatus,
   });
 
-  // Add to Redis idle queue
-  await addToIdleQueue(channelId, now.getTime());
-  console.log(`[channelState] Channel ${channelId} added to idle queue`);
+  // Add to domain-scoped Redis idle queue
+  await addToIdleQueue(channelId, now.getTime(), domain);
+  console.log(`[channelState] Channel ${channelId} added to idle queue (domain: ${domain})`);
 
-  // Check if there's a waiting article that needs a channel
-  const waitingArticleId = await popWaitingArticle();
+  // Check if there's a waiting article for this domain
+  const waitingArticleId = await popWaitingArticle(domain);
   if (waitingArticleId) {
     console.log(
       `[channelState] Found waiting article ${waitingArticleId} — triggering assignment`,
@@ -101,6 +102,7 @@ async function handleIdle(channelId, oldStatus) {
     // Dispatch an assignment job — the matching engine will pop this channel
     await queues.articleAssignment.add('assign-waiting', {
       articleId: Number(waitingArticleId),
+      domain,
     });
     return {
       status: 'idle_with_reassignment',
@@ -115,11 +117,11 @@ async function handleIdle(channelId, oldStatus) {
 /**
  * Channel is actively serving — just update status.
  */
-async function handleActive(channelId) {
+async function handleActive(channelId, domain = 'articlespectrum.com') {
   await queries.updateChannelStatus(channelId, 'assigned', {});
 
   // Remove from idle queue if it was there (shouldn't be, but defensive)
-  await removeFromIdleQueue(channelId);
+  await removeFromIdleQueue(channelId, domain);
 
   await queries.logChannelEvent(channelId, 'reactivated', null, null);
 
@@ -130,7 +132,7 @@ async function handleActive(channelId) {
 /**
  * Channel disapproved — remove from idle queue, alert Slack.
  */
-async function handleDisapproved(channelId, oldStatus) {
+async function handleDisapproved(channelId, oldStatus, domain = 'articlespectrum.com') {
   if (oldStatus === 'assigned') {
     const active = await queries.getActiveAssignmentForChannel(channelId);
     if (active) {
@@ -139,12 +141,13 @@ async function handleDisapproved(channelId, oldStatus) {
       await removeArticleChannel(active.article_id);
       await queues.articleAssignment.add('reassign-after-disapproval', {
         articleId: Number(active.article_id),
+        domain,
       });
     }
   }
 
-  // Remove from idle queue (if it was idle)
-  await removeFromIdleQueue(channelId);
+  // Remove from domain idle queue (if it was idle)
+  await removeFromIdleQueue(channelId, domain);
 
   // Update PostgreSQL
   await queries.updateChannelStatus(channelId, 'disapproved', {
