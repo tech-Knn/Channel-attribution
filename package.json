@@ -2,8 +2,26 @@
   "name": "channel-attribution",
   "version": "1.0.0",
   "description": "Channel utilisation & revenue attribution system",
-  "main": "src/index.js",
+  "keywords": [
+    "channel-attribution",
+    "adsense",
+    "revenue"
+  ],
+  "homepage": "https://github.com/tech-Knn/Channel-attribution#readme",
+  "bugs": {
+    "url": "https://github.com/tech-Knn/Channel-attribution/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tech-Knn/Channel-attribution.git"
+  },
+  "license": "ISC",
+  "author": "",
   "type": "commonjs",
+  "main": "src/index.js",
+  "directories": {
+    "doc": "docs"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
@@ -14,13 +32,6 @@
     "docker:down": "docker compose down",
     "test": "echo \"No tests yet\" && exit 0"
   },
-  "keywords": [
-    "channel-attribution",
-    "adsense",
-    "revenue"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@google-analytics/data": "^5.2.1",
     "axios": "^1.7.0",
@@ -37,5 +48,6 @@
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
     "pg": "^8.13.0"
-  }
+  },
+  "devDependencies": {}
 }

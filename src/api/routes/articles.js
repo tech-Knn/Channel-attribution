@@ -19,12 +19,14 @@ const { queues } = require('../../redis/queues');
 const router = Router();
 
 // ── POST /api/articles ─────────────────────────────────────────────────────
-
+//changes: added validations for URL duplicacy-
 router.post('/', async (req, res, next) => {
   try {
     const { articleId, url, category, publishedAt } = req.body;
 
     if (!articleId) return res.status(400).json({ error: 'articleId is required' });
+    if (!url) return res.status(400).json({ error: 'url is required' });
+    if (!category) return res.status(400).json({ error: 'category is required' });
     if (!publishedAt) return res.status(400).json({ error: 'publishedAt is required' });
 
     const article = await queries.createArticle({
@@ -45,11 +47,29 @@ router.post('/', async (req, res, next) => {
 
     res.status(201).json({ data: article, message: 'Article created, assignment job queued' });
   } catch (err) {
-    if (err.code === '23505') {
-      return res.status(409).json({ error: 'Article with this articleId already exists' });
+  if (err.code === '23505') {
+
+    if (err.constraint === 'unique_url') {
+      return res.status(409).json({
+        error: 'Article with this URL already exists'
+      });
     }
-    next(err);
+
+    if (err.constraint === 'articles_external_id_key') {
+      return res.status(409).json({
+        error: 'Article with this articleId already exists'
+      });
+    }
+
+    if (err.constraint === 'articles_pkey') {
+      return res.status(409).json({
+        error: 'Primary key duplicate'
+      });
+    }
   }
+
+  next(err);
+}
 });
 
 // ── GET /api/articles ──────────────────────────────────────────────────────

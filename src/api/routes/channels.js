@@ -19,16 +19,58 @@ const router = Router();
 
 // ── POST /api/channels ─────────────────────────────────────────────────────
 
+// router.post('/', async (req, res, next) => {
+//   try {
+//     const { id, channelId, status, domain } = req.body;
+
+//     if (!id || !channelId) {
+//       return res.status(400).json({ error: 'id and channelId are required' });
+//     }
+
+//     const validStatuses = ['idle', 'assigned', 'disapproved', 'manual_review'];
+//     const channelStatus = validStatuses.includes(status) ? status : 'idle';
+
+//     const channel = await queries.createChannel({
+//       id: Number(id),
+//       channelId,
+//       status: channelStatus,
+//       domain: domain || 'articlespectrum.com',
+//     });
+
+//     // Log creation event
+//     await queries.addChannelLog(channel.id, 'idle', null, { reason: 'registered' });
+
+//     // Added to Redis idle queue if channel is idle// this m,ake sure to idle channel will get in redish 
+//     if (channelStatus === 'idle') {
+//       await queues.channelState.add('state-change', {
+//         channelId: channel.id,
+//         previousStatus: null,
+//         newStatus: 'idle',
+//       }, {
+//         attempts: 3,
+//         backoff: { type: 'exponential', delay: 1000 },
+//       });
+//     }
+
+//     res.status(201).json({ data: channel });
+//   } catch (err) {
+//     if (err.code === '23505') {
+//       return res.status(409).json({ error: 'Channel with this id or channelId already exists' });
+//     }
+//     next(err);
+//   }
+// });
+
+//changes: removed status field from req.body-
 router.post('/', async (req, res, next) => {
   try {
-    const { id, channelId, status, domain } = req.body;
+    const { id, channelId, domain } = req.body;
 
     if (!id || !channelId) {
       return res.status(400).json({ error: 'id and channelId are required' });
     }
 
-    const validStatuses = ['idle', 'assigned', 'disapproved', 'manual_review'];
-    const channelStatus = validStatuses.includes(status) ? status : 'idle';
+    const channelStatus = 'idle';
 
     const channel = await queries.createChannel({
       id: Number(id),
@@ -38,24 +80,33 @@ router.post('/', async (req, res, next) => {
     });
 
     // Log creation event
-    await queries.addChannelLog(channel.id, 'idle', null, { reason: 'registered' });
+    await queries.addChannelLog(channel.id, 'idle', null, {
+      reason: 'registered',
+    });
 
-    // Added to Redis idle queue if channel is idle// this m,ake sure to idle channel will get in redish 
+    // Add to Redis queue if idle
     if (channelStatus === 'idle') {
-      await queues.channelState.add('state-change', {
-        channelId: channel.id,
-        previousStatus: null,
-        newStatus: 'idle',
-      }, {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 },
-      });
+      await queues.channelState.add(
+        'state-change',
+        {
+          channelId: channel.id,
+          previousStatus: null,
+          newStatus: 'idle',
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 1000 },
+        }
+      );
     }
 
     res.status(201).json({ data: channel });
+
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Channel with this id or channelId already exists' });
+      return res.status(409).json({
+        error: 'Channel with this id or channelId already exists',
+      });
     }
     next(err);
   }
