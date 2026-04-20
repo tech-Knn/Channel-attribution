@@ -12,7 +12,7 @@
     "db:migrate": "psql $DATABASE_URL -f src/db/migrations/003_ga4_integration.sql",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No tests yet\" && exit 0"
   },
   "keywords": [
     "channel-attribution",
