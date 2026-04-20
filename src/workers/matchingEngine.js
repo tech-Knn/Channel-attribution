@@ -114,7 +114,17 @@ async function processJob(job) {
     await client.query('ROLLBACK');
     console.error(`[matchingEngine] Assignment failed for article ${articleId}:`, err.message);
 
-    // Put the channel back in the domain idle queue since we failed to assign it
+    // FK constraint means the channel doesn't exist in DB (ghost in Redis).
+    // Discard it and park the article in the waiting queue so it gets picked up
+    // when a real idle channel becomes available.
+    if (err.message.includes('foreign key constraint')) {
+      console.warn(`[matchingEngine] Channel ${channelId} is a ghost (not in DB) — discarded from idle queue`);
+      await addToWaitingQueue(articleId, domain);
+      console.log(`[matchingEngine] Article ${articleId} moved to waiting queue after ghost channel discard`);
+      return { status: 'queued', reason: 'ghost_channel_discarded', articleId };
+    }
+
+    // For other errors, put the channel back so it can be retried
     const { addToIdleQueue } = require('../redis/channelQueue');
     await addToIdleQueue(channelId, idle.idleSince, domain);
     console.log(`[matchingEngine] Channel ${channelId} returned to idle queue after failure`);
