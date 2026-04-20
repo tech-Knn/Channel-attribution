@@ -22,17 +22,109 @@ async function ensureSchema() {
       ) AS exists
     `);
 
-    if (rows[0].exists) {
-      console.log('[boot] schema exists — skipping');
-      return;
+    if (!rows[0].exists) {
+      console.log('[boot] applying schema.sql...');
+      await client.query(fs.readFileSync(schemaPath, 'utf8'));
+      console.log('[boot] schema applied');
+    } else {
+      console.log('[boot] schema exists — skipping base schema');
     }
-
-    console.log('[boot] applying schema.sql...');
-    await client.query(fs.readFileSync(schemaPath, 'utf8'));
-    console.log('[boot] schema applied');
   } finally {
     client.release();
   }
+}
+
+/**
+ * Run all pending SQL migration files in order.
+ * Tracks applied migrations in a `schema_migrations` table.
+ */
+async function runMigrations() {
+  const migrationsDir = path.join(__dirname, 'db', 'migrations');
+  if (!fs.existsSync(migrationsDir)) {
+    console.log('[boot] no migrations directory — skipping');
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    // Ensure migrations tracking table exists
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename VARCHAR(255) PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    // Get already-applied migrations
+    const { rows: applied } = await client.query(
+      `SELECT filename FROM schema_migrations ORDER BY filename`
+    );
+    const appliedSet = new Set(applied.map(r => r.filename));
+
+    // Get all migration files sorted
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    let appliedCount = 0;
+    for (const file of files) {
+      if (appliedSet.has(file)) {
+        continue; // already applied
+      }
+
+      console.log(`[boot] applying migration: ${file}`);
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+
+      await client.query('BEGIN');
+      try {
+        await client.query(sql);
+        await client.query(
+          `INSERT INTO schema_migrations (filename) VALUES ($1)`,
+          [file]
+        );
+        await client.query('COMMIT');
+        console.log(`[boot] migration applied: ${file}`);
+        appliedCount++;
+      } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(`[boot] migration FAILED: ${file} —`, err.message);
+        throw err;
+      }
+    }
+
+    if (appliedCount === 0) {
+      console.log('[boot] migrations: all up-to-date');
+    } else {
+      console.log(`[boot] migrations: ${appliedCount} applied`);
+    }
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Sync idle channels from PostgreSQL into domain-scoped Redis sorted sets.
+ * This ensures Redis always reflects the DB state after a restart or wipe.
+ */
+async function syncIdleChannelsToRedis() {
+  const { addToIdleQueue } = require('./redis/channelQueue');
+
+  const { rows: idleChannels } = await pool.query(
+    `SELECT id, idle_since, domain FROM channels WHERE status = 'idle' ORDER BY idle_since ASC`
+  );
+
+  if (idleChannels.length === 0) {
+    console.log('[boot] sync: no idle channels in DB');
+    return;
+  }
+
+  for (const ch of idleChannels) {
+    const score = ch.idle_since ? new Date(ch.idle_since).getTime() : Date.now();
+    const domain = ch.domain || 'articlespectrum.com';
+    await addToIdleQueue(ch.id, score, domain);
+  }
+
+  console.log(`[boot] sync: loaded ${idleChannels.length} idle channels into Redis`);
 }
 
 async function testPostgres() {
@@ -138,10 +230,12 @@ async function main() {
     await testPostgres();
     await testRedis();
     await ensureSchema();
+    await runMigrations();          // apply any pending SQL migrations
+    await syncIdleChannelsToRedis(); // load idle channels from DB → Redis
     await setupRepeatableJobs();
     loadWorkers();
     await startAPI();
-    await reconcilePendingArticles();
+    await reconcilePendingArticles(); // re-queue any pending articles
     console.log('[boot] system ready');
   } catch (err) {
     console.error('[boot] fatal error during startup:', err);
