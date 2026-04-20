@@ -12,11 +12,18 @@ const QUEUE_NAME = 'article-reactivation';
 
 async function processJob() {
   // One GA4 API call — returns Map<pagePath, activeUsers> for all pages >= threshold
+  const { isDisabled } = require('./ga4Client');
+  if (isDisabled()) {
+    console.warn('[gaMonitor] GA4 disabled — skipping cycle');
+    return { reactivated: 0, trafficUpdated: 0 };
+  }
+
   let highTrafficPages;
   try {
     highTrafficPages = await getHighTrafficPages(config.ga4.reactivationThreshold);
   } catch (err) {
     console.error('[gaMonitor] GA4 API error:', err.message);
+    if (err.message.includes('disabled')) return { reactivated: 0, trafficUpdated: 0 };
     throw err;
   }
 
