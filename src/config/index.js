@@ -21,7 +21,7 @@ const config = {
 
   // ── AFS (AdSense for Search) Reporting API ─────────────────
   afs: {
-    publisherId: process.env.AFS_PUBLISHER_ID || '',
+    publisherId: process.env.ADSENSE_PUBLISHER_ID || process.env.AFS_PUBLISHER_ID || '',
     apiKey: process.env.AFS_API_KEY || '',
   },
 
