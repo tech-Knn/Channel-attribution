@@ -543,6 +543,17 @@ async function addChannelLog(channelId, event, articleId = null, metadata = null
 /**
  * Find articles published 72-96 hours ago with zero revenue events.
  */
+async function getZeroTrafficArticles(zeroTrafficMinutes = 5) {
+  const sql = `
+    SELECT a.*
+    FROM articles a
+    WHERE a.status IN ('assigned', 'active')
+      AND (a.last_traffic_at IS NULL OR a.last_traffic_at < NOW() - INTERVAL '${zeroTrafficMinutes} minutes')
+      AND a.published_at <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes'`;
+  const { rows } = await pool.query(sql);
+  return rows;
+}
+
 async function getZeroRevenueArticles(hoursMin = 72, hoursMax = 96) {
   const sql = `
     SELECT a.*
@@ -643,6 +654,7 @@ module.exports = {
   // Worker aliases & additions
   logChannelEvent,
   getActiveAssignmentByChannel,
+  getZeroTrafficArticles,
   getZeroRevenueArticles,
   closeAssignmentByArticle,
   upsertRevenueEvent,

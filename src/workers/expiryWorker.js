@@ -25,10 +25,6 @@ const { sendAlert } = require('./slackNotifier');
 
 const QUEUE_NAME = 'article-expiry';
 
-// Expiry window: articles published between 72 and 96 hours ago
-const EXPIRY_HOURS_START = 72;
-const EXPIRY_HOURS_END = 96;
-
 /**
  * Process the expiry check job.
  *
@@ -37,13 +33,11 @@ const EXPIRY_HOURS_END = 96;
 async function processJob(job) {
   console.log('[expiryWorker] Starting expiry check...');
 
-  // Find articles in the 72–96 hour window with zero revenue
+  const zeroTrafficMinutes = config.expiry.zeroTrafficMinutes;
+
   let expirableArticles;
   try {
-    expirableArticles = await queries.getZeroRevenueArticles(
-      EXPIRY_HOURS_START,
-      EXPIRY_HOURS_END,
-    );
+    expirableArticles = await queries.getZeroTrafficArticles(zeroTrafficMinutes);
   } catch (err) {
     console.error('[expiryWorker] Failed to query expirable articles:', err.message);
     throw err;

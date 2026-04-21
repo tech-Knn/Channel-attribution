@@ -1,11 +1,3 @@
-/**
- * Configuration module — loads environment variables with sensible local-dev defaults.
- *
- * Usage:
- *   const config = require('./config');
- *   console.log(config.database.url);
- */
-
 require('dotenv').config();
 
 const config = {
@@ -35,7 +27,18 @@ const config = {
     propertyId:            process.env.GA4_PROPERTY_ID         || '',
     measurementId:         process.env.GA4_MEASUREMENT_ID      || '',
     serviceAccountPath:    process.env.GA_SERVICE_ACCOUNT_PATH || './ga4-credentials.json',
-    reactivationThreshold: parseInt(process.env.GA4_REACTIVATION_THRESHOLD, 10) || 30,
+    credentialsJson:       process.env.GA4_CREDENTIALS_JSON    || '', // base64-encoded JSON for production
+    reactivationThreshold: parseInt(process.env.GA4_REACTIVATION_THRESHOLD, 10) || 2,
+  },
+
+  // ── Expiry Settings ─────────────────────────────────────────
+  expiry: {
+    // Minutes of zero traffic before an article is expired
+    zeroTrafficMinutes: parseInt(process.env.EXPIRY_ZERO_TRAFFIC_MINUTES, 10) || 5,
+    // How often expiry check runs (ms)
+    checkIntervalMs:    parseInt(process.env.EXPIRY_CHECK_INTERVAL_MS, 10)    || 60 * 1000,
+    // How often GA4 reactivation check runs (ms)
+    ga4CheckIntervalMs: parseInt(process.env.GA4_CHECK_INTERVAL_MS, 10)       || 60 * 1000,
   },
 
   // ── Application ─────────────────────────────────────────────
