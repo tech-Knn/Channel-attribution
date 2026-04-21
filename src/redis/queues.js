@@ -40,14 +40,14 @@ async function setupRepeatableJobs() {
     repeat: { every: 15 * 60 * 1000 },
   });
 
-  // Expiry check every hour
+  // Expiry check — interval controlled by EXPIRY_CHECK_INTERVAL_MS (default 1 min)
   await queues.articleExpiry.add('check-expiry', {}, {
-    repeat: { every: 60 * 60 * 1000 },
+    repeat: { every: config.expiry.checkIntervalMs },
   });
 
-  // GA4 reactivation check every 1 hour
+  // GA4 reactivation check — interval controlled by GA4_CHECK_INTERVAL_MS (default 1 min)
   await queues.gaMonitor.add('ga-reactivation-poll', {}, {
-    repeat: { every: 60 * 60 * 1000 },
+    repeat: { every: config.expiry.ga4CheckIntervalMs },
   });
 
   console.log('[queues] Repeatable jobs configured');
