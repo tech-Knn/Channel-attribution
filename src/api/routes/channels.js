@@ -79,12 +79,10 @@ router.post('/', async (req, res, next) => {
       domain: domain || 'articlespectrum.com',
     });
 
-    // Log creation event
     await queries.addChannelLog(channel.id, 'idle', null, {
       reason: 'registered',
     });
 
-    // Add to Redis queue if idle
     if (channelStatus === 'idle') {
       await queues.channelState.add(
         'state-change',
