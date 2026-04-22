@@ -22,9 +22,9 @@ async function processJob() {
   try {
     highTrafficPages = await getHighTrafficPages(config.ga4.reactivationThreshold);
   } catch (err) {
-    console.error('[gaMonitor] GA4 API error:', err.message);
-    if (err.message.includes('disabled')) return { reactivated: 0, trafficUpdated: 0 };
-    throw err;
+    // Never throw — a GA4 error should not crash the job or cause retries
+    console.error('[gaMonitor] GA4 API error (skipping cycle):', err.message);
+    return { reactivated: 0, trafficUpdated: 0 };
   }
 
   if (highTrafficPages.size === 0) {
