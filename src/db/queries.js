@@ -93,7 +93,11 @@ async function updateArticleStatus(id, status, extra = {}, client = null) {
     sets.push(`expiry_reason = $${idx++}`);
     params.push(extra.expiryReason);
   }
-  if (extra.lastTrafficAt) {
+  // Always set last_traffic_at when assigning so the expiry clock starts fresh
+  if (status === 'assigned') {
+    sets.push(`last_traffic_at = $${idx++}`);
+    params.push(extra.lastTrafficAt || new Date());
+  } else if (extra.lastTrafficAt) {
     sets.push(`last_traffic_at = $${idx++}`);
     params.push(extra.lastTrafficAt);
   }
@@ -548,15 +552,15 @@ async function addChannelLog(channelId, event, articleId = null, metadata = null
  * Find articles published 72-96 hours ago with zero revenue events.
  */
 async function getZeroTrafficArticles(zeroTrafficMinutes = 5) {
-  // Expire articles where last_traffic_at hasn't been updated in X minutes.
-  // last_traffic_at is set to NOW() on assignment, so the 5-min clock always
-  // starts fresh when an article is assigned regardless of publish time.
+  // Expire assigned articles with no traffic for X minutes.
+  // Uses last_traffic_at if set; falls back to assignment created_at for articles
+  // where last_traffic_at was never populated (e.g. assigned before this column existed).
   const sql = `
     SELECT a.*
     FROM articles a
+    LEFT JOIN assignments asgn ON asgn.article_id = a.id AND asgn.status = 'active'
     WHERE a.status IN ('assigned', 'active')
-      AND a.last_traffic_at IS NOT NULL
-      AND a.last_traffic_at <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes'`;
+      AND COALESCE(a.last_traffic_at, asgn.created_at, a.updated_at) <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes'`;
   const { rows } = await pool.query(sql);
   return rows;
 }
@@ -734,10 +738,11 @@ async function reactivateArticle(articleId, client) {
   const db = client || pool;
   const sql = `
     UPDATE articles
-    SET    status         = 'pending',
-           expiry_reason  = NULL,
-           expired_at     = NULL,
-           reactivated_at = NOW()
+    SET    status          = 'pending',
+           expiry_reason   = NULL,
+           expired_at      = NULL,
+           last_traffic_at = NULL,
+           reactivated_at  = NOW()
     WHERE  id = $1
     RETURNING *`;
   const { rows } = await db.query(sql, [articleId]);
