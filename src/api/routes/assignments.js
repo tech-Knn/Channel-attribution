@@ -71,7 +71,7 @@ router.post('/manual', async (req, res, next) => {
 
     await Promise.all([
       queries.updateChannelStatus(chId, 'assigned', { assignedTo: artId }),
-      queries.updateArticleStatus(artId, 'assigned'),
+      queries.updateArticleStatus(artId, 'assigned', { lastTrafficAt: new Date() }),
       queries.addChannelLog(chId, 'assigned', artId, { method: 'manual' }),
       queues.channelState.add('manual-assignment', { channelId: chId, articleId: artId, assignmentId: assignment.id }),
     ]);
