@@ -93,6 +93,10 @@ async function updateArticleStatus(id, status, extra = {}, client = null) {
     sets.push(`expiry_reason = $${idx++}`);
     params.push(extra.expiryReason);
   }
+  if (extra.lastTrafficAt) {
+    sets.push(`last_traffic_at = $${idx++}`);
+    params.push(extra.lastTrafficAt);
+  }
 
   const sql = `UPDATE articles SET ${sets.join(', ')} WHERE id = $1 RETURNING *`;
   const { rows } = await db.query(sql, params);
@@ -544,17 +548,15 @@ async function addChannelLog(channelId, event, articleId = null, metadata = null
  * Find articles published 72-96 hours ago with zero revenue events.
  */
 async function getZeroTrafficArticles(zeroTrafficMinutes = 5) {
-  // Expire articles that have been ASSIGNED for X minutes with no traffic.
-  // Uses assignment created_at so a freshly assigned article always gets
-  // the full window regardless of when it was published.
+  // Expire articles where last_traffic_at hasn't been updated in X minutes.
+  // last_traffic_at is set to NOW() on assignment, so the 5-min clock always
+  // starts fresh when an article is assigned regardless of publish time.
   const sql = `
     SELECT a.*
     FROM articles a
-    INNER JOIN assignments asgn
-      ON asgn.article_id = a.id AND asgn.status = 'active'
     WHERE a.status IN ('assigned', 'active')
-      AND asgn.created_at <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes'
-      AND (a.last_traffic_at IS NULL OR a.last_traffic_at < asgn.created_at)`;
+      AND a.last_traffic_at IS NOT NULL
+      AND a.last_traffic_at <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes'`;
   const { rows } = await pool.query(sql);
   return rows;
 }
