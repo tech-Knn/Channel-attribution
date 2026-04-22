@@ -158,18 +158,21 @@ async function expireArticle(article) {
       await removeChannelAssignment(freedChannelId);
       await removeArticleChannel(article.id);
 
-      // Add channel back to idle queue
-      await addToIdleQueue(freedChannelId, Date.now());
+      const domain = article.domain || 'articlespectrum.com';
+
+      // Add channel back to idle queue (domain-scoped)
+      await addToIdleQueue(freedChannelId, Date.now(), domain);
 
       console.log(
         `[expiryWorker] Article ${article.id} expired → channel ${freedChannelId} freed`,
       );
 
       // Check if a waiting article can use this channel immediately
-      const waitingArticleId = await popWaitingArticle();
+      const waitingArticleId = await popWaitingArticle(domain);
       if (waitingArticleId) {
         await queues.articleAssignment.add('assign-after-expiry', {
           articleId: Number(waitingArticleId),
+          domain,
         });
         reassigned = true;
         console.log(
