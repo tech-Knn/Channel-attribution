@@ -106,4 +106,21 @@ router.post('/reconcile', async (req, res, next) => {
   }
 });
 
+router.post('/drain-failed', async (req, res, next) => {
+  try {
+    const { queues: q } = require('../../redis/queues');
+    const results = {};
+    for (const [name, queue] of Object.entries(q)) {
+      const count = await queue.getFailedCount();
+      if (count > 0) {
+        await queue.clean(0, 10000, 'failed');
+        results[name] = count;
+      }
+    }
+    res.json({ message: 'Failed jobs cleared', cleared: results });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

@@ -143,15 +143,13 @@ async function testRedis() {
 }
 
 function loadWorkers() {
-  const { createMatchingEngineWorker }      = require('./workers/matchingEngine');
-  const { createChannelStateWorker }        = require('./workers/channelState');
-  const { createRevenueAttributionWorker }  = require('./workers/revenueAttribution');
-  const { createExpiryWorker }              = require('./workers/expiryWorker');
-  const { createGaMonitorWorker }           = require('./workers/gaMonitor');
+  const { createMatchingEngineWorker } = require('./workers/matchingEngine');
+  const { createChannelStateWorker }   = require('./workers/channelState');
+  const { createExpiryWorker }         = require('./workers/expiryWorker');
+  const { createGaMonitorWorker }      = require('./workers/gaMonitor');
 
   createMatchingEngineWorker();
   createChannelStateWorker();
-  createRevenueAttributionWorker();
   createExpiryWorker();
   createGaMonitorWorker();
 
