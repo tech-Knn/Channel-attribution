@@ -94,6 +94,7 @@ async function handleReactivation(article, activeUsers) {
   await queues.articleAssignment.add('reactivate-article', {
     articleId:  article.id,
     externalId: article.article_id,
+    domain:     article.domain || 'articlespectrum.com',
   }, {
     attempts: 3,
     backoff: { type: 'exponential', delay: 2000 },
