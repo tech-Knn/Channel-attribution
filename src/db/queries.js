@@ -688,7 +688,7 @@ module.exports = {
 
 async function getExpiredArticlesForReactivation() {
   const sql = `
-    SELECT id, article_id, url, status, last_traffic_at
+    SELECT id, article_id, url, domain, status, last_traffic_at
     FROM   articles
     WHERE  status = 'expired'
       AND  url IS NOT NULL
