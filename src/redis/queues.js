@@ -43,11 +43,6 @@ async function setupRepeatableJobs() {
     }
   }
 
-  // Revenue pull every 15 minutes
-  await queues.revenueAttribution.add('pull-afs', {}, {
-    repeat: { every: 15 * 60 * 1000 },
-  });
-
   // Expiry check — interval controlled by EXPIRY_CHECK_INTERVAL_MS (default 1 min)
   await queues.articleExpiry.add('check-expiry', {}, {
     repeat: { every: config.expiry.checkIntervalMs },
