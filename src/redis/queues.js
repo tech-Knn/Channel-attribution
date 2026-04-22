@@ -35,6 +35,14 @@ const queues = {
  * Set up repeatable jobs (idempotent — safe to call on every startup).
  */
 async function setupRepeatableJobs() {
+  // Remove all existing repeatable jobs first to avoid duplicates across deploys
+  for (const queue of Object.values(queues)) {
+    const existing = await queue.getRepeatableJobs();
+    for (const job of existing) {
+      await queue.removeRepeatableByKey(job.key);
+    }
+  }
+
   // Revenue pull every 15 minutes
   await queues.revenueAttribution.add('pull-afs', {}, {
     repeat: { every: 15 * 60 * 1000 },
