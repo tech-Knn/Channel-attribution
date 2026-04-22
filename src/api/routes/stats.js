@@ -32,7 +32,7 @@ router.post('/run-expiry', async (req, res, next) => {
     const result = await runExpiry({ id: 'manual' });
     res.json({ message: 'Expiry check completed', result });
   } catch (err) {
-    next(err);
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 

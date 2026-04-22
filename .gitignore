@@ -6,6 +6,7 @@ node_modules/
 .env.local
 .env.*.local
 ga4-credentials.json
+ga4-test-*.json
 *service-account*.json
 *credentials*.json
 
