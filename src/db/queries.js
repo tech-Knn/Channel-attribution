@@ -552,15 +552,18 @@ async function addChannelLog(channelId, event, articleId = null, metadata = null
  * Find articles published 72-96 hours ago with zero revenue events.
  */
 async function getZeroTrafficArticles(zeroTrafficMinutes = 5) {
-  // Expire assigned articles with no traffic for X minutes.
-  // Uses last_traffic_at if set; falls back to assignment created_at for articles
-  // where last_traffic_at was never populated (e.g. assigned before this column existed).
+  // Expire assigned/active articles with no traffic for X minutes.
+  // If last_traffic_at is set, use it. Otherwise fall back to created_at
+  // so articles that were never updated (e.g. assigned via manual route) still expire.
   const sql = `
     SELECT a.*
     FROM articles a
-    LEFT JOIN assignments asgn ON asgn.article_id = a.id AND asgn.status = 'active'
     WHERE a.status IN ('assigned', 'active')
-      AND COALESCE(a.last_traffic_at, asgn.created_at, a.updated_at) <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes'`;
+      AND (
+        (a.last_traffic_at IS NOT NULL AND a.last_traffic_at <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes')
+        OR
+        (a.last_traffic_at IS NULL AND a.created_at <= NOW() - INTERVAL '${zeroTrafficMinutes} minutes')
+      )`;
   const { rows } = await pool.query(sql);
   return rows;
 }
