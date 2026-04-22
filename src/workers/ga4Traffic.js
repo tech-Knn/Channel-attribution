@@ -32,11 +32,37 @@ async function getArticleTraffic(pagePath) {
   };
 }
 
-// Batch query — single API call returning all pages that hit the threshold.
-// Used by gaMonitor to avoid N per-article API calls.
+// Batch query — uses Realtime API (last 30 min) for near-instant reactivation detection.
+// Falls back to standard 1-day report if realtime returns nothing.
 async function getHighTrafficPages(threshold) {
-  const [response] = await getClient().runReport({
-    property: `properties/${config.ga4.propertyId}`,
+  const client = getClient();
+  const property = `properties/${config.ga4.propertyId}`;
+
+  // Try Realtime API first (last 30 minutes)
+  let realtimeMap = new Map();
+  try {
+    const [rtResponse] = await client.runRealtimeReport({
+      property,
+      dimensions: [{ name: 'unifiedPagePathScreen' }],
+      metrics: [{ name: 'activeUsers' }],
+      limit: 1000,
+    });
+    if (rtResponse.rows?.length) {
+      for (const row of rtResponse.rows) {
+        const pagePath   = row.dimensionValues[0].value;
+        const activeUsers = parseInt(row.metricValues[0].value, 10);
+        if (activeUsers >= threshold) realtimeMap.set(pagePath, activeUsers);
+      }
+    }
+  } catch (err) {
+    console.warn('[ga4Traffic] Realtime API error (falling back to daily):', err.message);
+  }
+
+  if (realtimeMap.size > 0) return realtimeMap;
+
+  // Fallback: standard 1-day report
+  const [response] = await client.runReport({
+    property,
     dateRanges: [{ startDate: '1daysAgo', endDate: 'today' }],
     dimensions: [{ name: 'pagePath' }],
     metrics: [{ name: 'activeUsers' }],
