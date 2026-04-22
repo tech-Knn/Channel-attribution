@@ -55,6 +55,7 @@ const webhookRouter = require('./routes/webhook');
 // Public routes (no auth required)
 app.use('/api/health', healthRouter);
 app.use('/api/webhook', webhookRouter);  // called by your publishing platform
+app.use('/api/track', require('./routes/track'));  // page-view heartbeat, called from article pages
 
 // Protected routes
 app.use('/api/articles', verifyToken, articlesRouter);

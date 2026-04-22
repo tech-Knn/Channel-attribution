@@ -18,19 +18,26 @@ async function processJob() {
     return { reactivated: 0, trafficUpdated: 0 };
   }
 
-  let highTrafficPages;
+  // Fetch all pages with ANY traffic (threshold=1) for the heartbeat.
+  // Reactivation uses a higher threshold filtered from the same result.
+  let allTrafficPages;
   try {
-    highTrafficPages = await getHighTrafficPages(config.ga4.reactivationThreshold);
+    allTrafficPages = await getHighTrafficPages(1);
   } catch (err) {
     // Never throw — a GA4 error should not crash the job or cause retries
     console.error('[gaMonitor] GA4 API error (skipping cycle):', err.message);
     return { reactivated: 0, trafficUpdated: 0 };
   }
 
-  if (highTrafficPages.size === 0) {
-    console.log('[gaMonitor] no pages above threshold this cycle');
+  if (allTrafficPages.size === 0) {
+    console.log('[gaMonitor] no pages with traffic this cycle');
     return { reactivated: 0, trafficUpdated: 0 };
   }
+
+  // Pages above the reactivation threshold (subset of allTrafficPages)
+  const highTrafficPages = new Map(
+    [...allTrafficPages].filter(([, users]) => users >= config.ga4.reactivationThreshold),
+  );
 
   const [expiredArticles, activeArticles] = await Promise.all([
     queries.getExpiredArticlesForReactivation(),
@@ -40,7 +47,7 @@ async function processJob() {
   let reactivated = 0;
   let trafficUpdated = 0;
 
-  // Reactivation — expired articles that now have returning traffic
+  // Reactivation — expired articles that now have traffic above threshold
   for (const article of expiredArticles) {
     const pagePath = safePathname(article.url);
     if (!pagePath) continue;
@@ -56,12 +63,12 @@ async function processJob() {
     }
   }
 
-  // Traffic heartbeat — update last_traffic_at for assigned/active articles
-  // so the expiry worker doesn't expire articles that still have real visitors
+  // Traffic heartbeat — update last_traffic_at for ALL active/assigned articles
+  // with any traffic (threshold=1), so the expiry worker doesn't expire them
   const pathsToUpdate = [];
   for (const article of activeArticles) {
     const pagePath = safePathname(article.url);
-    if (pagePath && highTrafficPages.has(pagePath)) {
+    if (pagePath && allTrafficPages.has(pagePath)) {
       pathsToUpdate.push(article.id);
     }
   }
