@@ -78,8 +78,8 @@ async function processJob(job) {
       client,
     );
 
-    // Update article status → assigned
-    await queries.updateArticleStatus(articleId, 'assigned', {}, client);
+    // Update article status → assigned and reset traffic clock
+    await queries.updateArticleStatus(articleId, 'assigned', { lastTrafficAt: new Date() }, client);
 
     // Log the event
     await queries.logChannelEvent(
