@@ -36,9 +36,17 @@ router.post('/pageview', async (req, res) => {
       );
       row = rows[0];
     } else {
+      // Strip query params, hash, and trailing slash so the lookup matches
+      // regardless of UTM tags or other parameters added by the browser
+      let cleanUrl = url;
+      try {
+        const parsed = new URL(url);
+        cleanUrl = parsed.origin + parsed.pathname.replace(/\/$/, '');
+      } catch (_) { /* invalid URL — use as-is */ }
+
       const { rows } = await pool.query(
         `SELECT id, status, domain, direct_pageviews FROM articles WHERE url = $1 LIMIT 1`,
-        [url],
+        [cleanUrl],
       );
       row = rows[0];
     }
