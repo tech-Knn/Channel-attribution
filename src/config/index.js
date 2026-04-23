@@ -33,7 +33,7 @@ const config = {
   // ── Pageview Tracking ───────────────────────────────────────
   tracking: {
     // Number of direct page views required to reactivate an expired article
-    pageViewThreshold: parseInt(process.env.PAGE_VIEW_THRESHOLD, 10) || 5,
+    pageViewThreshold: parseInt(process.env.PAGE_VIEW_THRESHOLD, 10) || 4,
   },
 
   // ── Expiry Settings ─────────────────────────────────────────
