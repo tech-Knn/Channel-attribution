@@ -49,6 +49,7 @@ router.post('/pageview', async (req, res) => {
         [cleanUrl],
       );
       row = rows[0];
+      if (!row) console.log(`[track] no match for URL — raw: "${url}" clean: "${cleanUrl}"`);
     }
 
     if (!row) return; // unknown URL — ignore silently
