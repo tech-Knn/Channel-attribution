@@ -36,7 +36,7 @@ async function processJob() {
 
   // Pages above the reactivation threshold (subset of allTrafficPages)
   const highTrafficPages = new Map(
-    [...allTrafficPages].filter(([, users]) => users >= config.ga4.reactivationThreshold),
+    [...allTrafficPages].filter(([, users]) => users >= config.tracking.pageViewThreshold),
   );
 
   const [expiredArticles, activeArticles] = await Promise.all([
@@ -111,7 +111,7 @@ async function handleReactivation(article, activeUsers) {
     `GA4 reactivation triggered.\n` +
     `Article: ${article.article_id} (id: ${article.id})\n` +
     `URL: ${article.url}\n` +
-    `Active users (last 24hr): ${activeUsers} — threshold: ${config.ga4.reactivationThreshold}`,
+    `Active users (last 24hr): ${activeUsers} — threshold: ${config.tracking.pageViewThreshold}`,
     'info',
   );
 

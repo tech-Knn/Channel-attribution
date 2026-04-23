@@ -24,11 +24,16 @@ const config = {
 
   // ── Google Analytics 4 ─────────────────────────────────────
   ga4: {
-    propertyId:            process.env.GA4_PROPERTY_ID         || '',
-    measurementId:         process.env.GA4_MEASUREMENT_ID      || '',
-    serviceAccountPath:    process.env.GA_SERVICE_ACCOUNT_PATH || './ga4-credentials.json',
-    credentialsJson:       process.env.GA4_CREDENTIALS_JSON    || '', // base64-encoded JSON for production
-    reactivationThreshold: parseInt(process.env.GA4_REACTIVATION_THRESHOLD, 10) || 2,
+    propertyId:         process.env.GA4_PROPERTY_ID         || '',
+    measurementId:      process.env.GA4_MEASUREMENT_ID      || '',
+    serviceAccountPath: process.env.GA_SERVICE_ACCOUNT_PATH || './ga4-credentials.json',
+    credentialsJson:    process.env.GA4_CREDENTIALS_JSON    || '',
+  },
+
+  // ── Pageview Tracking ───────────────────────────────────────
+  tracking: {
+    // Number of direct page views required to reactivate an expired article
+    pageViewThreshold: parseInt(process.env.PAGE_VIEW_THRESHOLD, 10) || 5,
   },
 
   // ── Expiry Settings ─────────────────────────────────────────
