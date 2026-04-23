@@ -41,8 +41,6 @@ router.post('/pageview', async (req, res) => {
 
     if (['assigned', 'active'].includes(row.status)) {
       const windowMinutes = config.expiry.zeroTrafficMinutes;
-      // Keep last_traffic_at at the window boundary — don't overwrite with NOW()
-      // so a visit within a window survives until the window ends, not just 5 min from visit
       await pool.query(
         `UPDATE articles
          SET last_traffic_at = CASE
@@ -69,7 +67,7 @@ router.post('/pageview', async (req, res) => {
       if (views >= threshold) {
         await pool.query(
           `UPDATE articles
-           SET status = 'pending',
+           SET status           = 'pending',
                expiry_reason    = NULL,
                expired_at       = NULL,
                last_traffic_at  = NULL,

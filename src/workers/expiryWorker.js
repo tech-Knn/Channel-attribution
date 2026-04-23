@@ -1,17 +1,3 @@
-/**
- * Expiry Worker
- *
- * Runs on the 'article-expiry' queue, triggered every hour by a repeatable
- * BullMQ job. Identifies articles published 72–96 hours ago with zero
- * revenue and reclaims their channels.
- *
- * Workflow per expired article:
- *   1. Mark article as expired (status='expired', reason='zero_traffic')
- *   2. Close the active assignment
- *   3. Free the channel back to the idle queue
- *   4. If waiting articles exist → trigger immediate assignment
- */
-
 'use strict';
 
 const { Worker } = require('bullmq');
@@ -25,11 +11,6 @@ const { sendAlert } = require('./slackNotifier');
 
 const QUEUE_NAME = 'article-expiry';
 
-/**
- * Process the expiry check job.
- *
- * @param {import('bullmq').Job} job
- */
 async function processJob(job) {
   console.log('[expiryWorker] Starting expiry check...');
 
@@ -61,25 +42,14 @@ async function processJob(job) {
       if (result.channelFreed) channelsFreed++;
       if (result.reassigned) reassigned++;
     } catch (err) {
-      console.error(
-        `[expiryWorker] Failed to expire article ${article.id}:`,
-        err.message,
-      );
-      // Continue with other articles — don't let one failure block the rest
+      console.error(`[expiryWorker] Failed to expire article ${article.id}:`, err.message);
     }
   }
 
-  const summary = {
-    status: 'completed',
-    expired,
-    channelsFreed,
-    reassigned,
-    total: expirableArticles.length,
-  };
+  const summary = { status: 'completed', expired, channelsFreed, reassigned, total: expirableArticles.length };
 
-  console.log('[expiryWorker] ✓ Expiry check complete:', JSON.stringify(summary));
+  console.log('[expiryWorker] Expiry check complete:', JSON.stringify(summary));
 
-  // Alert if we expired a significant number of articles
   if (expired >= 10) {
     await sendAlert(
       `Expiry worker reclaimed ${channelsFreed} channel(s) from ${expired} zero-traffic article(s). ` +
@@ -91,12 +61,6 @@ async function processJob(job) {
   return summary;
 }
 
-/**
- * Expire a single article and free its channel.
- *
- * @param {Object} article — article row from PostgreSQL
- * @returns {Promise<{ channelFreed: boolean, reassigned: boolean }>}
- */
 async function expireArticle(article) {
   const client = await pool.connect();
   let channelFreed = false;
@@ -106,87 +70,49 @@ async function expireArticle(article) {
   try {
     await client.query('BEGIN');
 
-    // Mark article as expired and reset the reactivation counter
-    await queries.updateArticleStatus(
-      article.id,
-      'expired',
-      {
-        expiredAt: new Date(),
-        expiryReason: 'zero_traffic',
-      },
-      client,
-    );
-    await client.query(
-      `UPDATE articles SET direct_pageviews = 0 WHERE id = $1`,
-      [article.id],
-    );
+    await queries.updateArticleStatus(article.id, 'expired', {
+      expiredAt: new Date(),
+      expiryReason: 'zero_traffic',
+    }, client);
 
-    // Close the active assignment and get the channel ID
-    const closedAssignment = await queries.closeAssignmentByArticle(
-      article.id,
-      'expired',
-      client,
-    );
+    // Reset so the reactivation counter starts from zero after expiry
+    await client.query(`UPDATE articles SET direct_pageviews = 0 WHERE id = $1`, [article.id]);
+
+    const closedAssignment = await queries.closeAssignmentByArticle(article.id, 'expired', client);
 
     if (closedAssignment) {
       freedChannelId = closedAssignment.channel_id;
 
-      // Update channel status → idle
-      await queries.updateChannelStatus(
-        freedChannelId,
-        'idle',
-        { idleSince: new Date(), assignedTo: null },
-        client,
-      );
+      await queries.updateChannelStatus(freedChannelId, 'idle', { idleSince: new Date(), assignedTo: null }, client);
 
-      // Log the channel event
-      await queries.logChannelEvent(
-        freedChannelId,
-        'unassigned',
-        article.id,
-        JSON.stringify({
-          reason: 'zero_traffic_expiry',
-          assignmentId: closedAssignment.id,
-          articlePublishedAt: article.published_at,
-        }),
-        client,
-      );
+      await queries.logChannelEvent(freedChannelId, 'unassigned', article.id, JSON.stringify({
+        reason: 'zero_traffic_expiry',
+        assignmentId: closedAssignment.id,
+        articlePublishedAt: article.published_at,
+      }), client);
 
       channelFreed = true;
     }
 
     await client.query('COMMIT');
 
-    // Update Redis state (outside transaction)
     if (freedChannelId) {
       await removeChannelAssignment(freedChannelId);
       await removeArticleChannel(article.id);
 
       const domain = article.domain || 'articlespectrum.com';
-
-      // Add channel back to idle queue (domain-scoped)
       await addToIdleQueue(freedChannelId, Date.now(), domain);
 
-      console.log(
-        `[expiryWorker] Article ${article.id} expired → channel ${freedChannelId} freed`,
-      );
+      console.log(`[expiryWorker] Article ${article.id} expired — channel ${freedChannelId} freed`);
 
-      // Check if a waiting article can use this channel immediately
       const waitingArticleId = await popWaitingArticle(domain);
       if (waitingArticleId) {
-        await queues.articleAssignment.add('assign-after-expiry', {
-          articleId: Number(waitingArticleId),
-          domain,
-        });
+        await queues.articleAssignment.add('assign-after-expiry', { articleId: Number(waitingArticleId), domain });
         reassigned = true;
-        console.log(
-          `[expiryWorker] Waiting article ${waitingArticleId} dispatched for assignment`,
-        );
+        console.log(`[expiryWorker] Waiting article ${waitingArticleId} dispatched for assignment`);
       }
     } else {
-      console.log(
-        `[expiryWorker] Article ${article.id} expired (no active assignment found)`,
-      );
+      console.log(`[expiryWorker] Article ${article.id} expired (no active assignment found)`);
     }
 
     return { channelFreed, reassigned };
@@ -198,25 +124,14 @@ async function expireArticle(article) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Worker factory
-// ---------------------------------------------------------------------------
-
-/**
- * Create and start the expiry worker.
- * @returns {import('bullmq').Worker}
- */
 function createExpiryWorker() {
   const worker = new Worker(QUEUE_NAME, processJob, {
     connection: require('../redis/queues').connection,
-    concurrency: 1, // One expiry check at a time
+    concurrency: 1,
   });
 
   worker.on('completed', (job, result) => {
-    console.log(
-      `[expiryWorker] Job ${job.id} completed: ` +
-      `${result?.expired || 0} expired, ${result?.channelsFreed || 0} channels freed`,
-    );
+    console.log(`[expiryWorker] Job ${job.id} completed: ${result?.expired || 0} expired, ${result?.channelsFreed || 0} channels freed`);
   });
 
   worker.on('failed', (job, err) => {
