@@ -41,7 +41,7 @@ const config = {
     // Minutes with zero traffic before a NEVER-VISITED article is expired
     zeroTrafficMinutes:      parseInt(process.env.EXPIRY_ZERO_TRAFFIC_MINUTES, 10)       || 5,
     // Minutes with zero traffic before a VISITED article is expired (much longer)
-    trafficedExpiryMinutes:  parseInt(process.env.EXPIRY_TRAFFICKED_MINUTES, 10)         || 30,
+    trafficedExpiryMinutes:  parseInt(process.env.EXPIRY_TRAFFICKED_MINUTES, 10)         || 5,
     // How often expiry check runs (ms)
     checkIntervalMs:         parseInt(process.env.EXPIRY_CHECK_INTERVAL_MS, 10)          || 60 * 1000,
     // How often GA4 reactivation check runs (ms)
