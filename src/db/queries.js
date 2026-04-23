@@ -343,9 +343,12 @@ async function getRevenueByArticle({ limit = 50, offset = 0, sortBy = 'total_rev
   const sort = allowedSorts.includes(sortBy) ? sortBy : 'total_revenue';
   const dir = sortDir.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
+  // Join live articles table for current status — materialized view status can be stale
   const sql = `
-    SELECT * FROM mv_revenue_per_article
-    ORDER BY ${sort} ${dir}
+    SELECT mv.*, a.status AS article_status
+    FROM mv_revenue_per_article mv
+    JOIN articles a ON a.article_id = mv.article_id
+    ORDER BY mv.${sort} ${dir}
     LIMIT $1 OFFSET $2`;
   const { rows } = await pool.query(sql, [limit, offset]);
 
