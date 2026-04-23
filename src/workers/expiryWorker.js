@@ -33,11 +33,12 @@ const QUEUE_NAME = 'article-expiry';
 async function processJob(job) {
   console.log('[expiryWorker] Starting expiry check...');
 
-  const zeroTrafficMinutes = config.expiry.zeroTrafficMinutes;
+  const zeroTrafficMinutes     = config.expiry.zeroTrafficMinutes;
+  const trafficedExpiryMinutes = config.expiry.trafficedExpiryMinutes;
 
   let expirableArticles;
   try {
-    expirableArticles = await queries.getZeroTrafficArticles(zeroTrafficMinutes);
+    expirableArticles = await queries.getZeroTrafficArticles(zeroTrafficMinutes, trafficedExpiryMinutes);
   } catch (err) {
     console.error('[expiryWorker] Failed to query expirable articles:', err.message);
     throw err;
