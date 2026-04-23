@@ -554,29 +554,17 @@ async function addChannelLog(channelId, event, articleId = null, metadata = null
 /**
  * Find articles published 72-96 hours ago with zero revenue events.
  */
-async function getZeroTrafficArticles(zeroTrafficMinutes = 5, trafficedExpiryMinutes = 30) {
+async function getZeroTrafficArticles(zeroTrafficMinutes = 5) {
   const sql = `
     SELECT a.*
     FROM articles a
     WHERE a.status IN ('assigned', 'active')
       AND (
-        -- Never visited since assignment: expire after the short window
-        (
-          a.direct_pageviews = 0
-          AND (
-            (a.last_traffic_at IS NOT NULL AND a.last_traffic_at <= NOW() - ($1 * INTERVAL '1 minute'))
-            OR
-            (a.last_traffic_at IS NULL AND a.created_at <= NOW() - ($1 * INTERVAL '1 minute'))
-          )
-        )
+        (a.last_traffic_at IS NOT NULL AND a.last_traffic_at <= NOW() - ($1 * INTERVAL '1 minute'))
         OR
-        -- Visited at least once but gone quiet: expire after the longer window
-        (
-          a.direct_pageviews > 0
-          AND a.last_traffic_at <= NOW() - ($2 * INTERVAL '1 minute')
-        )
+        (a.last_traffic_at IS NULL AND a.created_at <= NOW() - ($1 * INTERVAL '1 minute'))
       )`;
-  const { rows } = await pool.query(sql, [zeroTrafficMinutes, trafficedExpiryMinutes]);
+  const { rows } = await pool.query(sql, [zeroTrafficMinutes]);
   return rows;
 }
 

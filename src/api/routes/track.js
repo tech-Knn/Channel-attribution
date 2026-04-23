@@ -55,12 +55,21 @@ router.post('/pageview', async (req, res) => {
     if (!row) return; // unknown URL — ignore silently
 
     if (['assigned', 'active'].includes(row.status)) {
-      // Heartbeat: reset the expiry clock
+      // Advance last_traffic_at to the END of the current window.
+      // If we're still inside the current window (last_traffic_at > NOW()), keep it.
+      // If the window has passed, move to the next window boundary.
+      // This means: any visit within a 5-min block keeps the article alive
+      // until the END of that block — not just 5 min from the visit time.
+      const windowMinutes = config.expiry.zeroTrafficMinutes;
       await pool.query(
         `UPDATE articles
-         SET last_traffic_at = NOW(), direct_pageviews = direct_pageviews + 1
+         SET last_traffic_at = CASE
+               WHEN last_traffic_at > NOW() THEN last_traffic_at
+               ELSE last_traffic_at + ($2 * INTERVAL '1 minute')
+             END,
+             direct_pageviews = direct_pageviews + 1
          WHERE id = $1`,
-        [row.id],
+        [row.id, windowMinutes],
       );
       console.log(`[track] heartbeat for article ${row.id} (${row.status})`);
 
