@@ -63,7 +63,7 @@ router.post('/pageview', async (req, res) => {
         [row.id],
       );
       const views = updated[0]?.direct_pageviews ?? 0;
-      const threshold = config.ga4.reactivationThreshold;
+      const threshold = config.tracking.pageViewThreshold;
 
       console.log(`[track] expired article ${row.id} — ${views}/${threshold} views`);
 

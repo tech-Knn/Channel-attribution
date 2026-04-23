@@ -106,7 +106,7 @@ async function expireArticle(article) {
   try {
     await client.query('BEGIN');
 
-    // Mark article as expired
+    // Mark article as expired and reset the reactivation counter
     await queries.updateArticleStatus(
       article.id,
       'expired',
@@ -115,6 +115,10 @@ async function expireArticle(article) {
         expiryReason: 'zero_traffic',
       },
       client,
+    );
+    await client.query(
+      `UPDATE articles SET direct_pageviews = 0 WHERE id = $1`,
+      [article.id],
     );
 
     // Close the active assignment and get the channel ID
