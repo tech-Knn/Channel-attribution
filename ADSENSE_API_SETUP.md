@@ -17,7 +17,7 @@ https://adsense.googleapis.com/v2/
 | Generate revenue report | GET | `https://adsense.googleapis.com/v2/{accountId}/reports:generate` |
 
 `{accountId}` format: `accounts/pub-XXXXXXXXXXXXXXXXX`  
-Example: `accounts/pub-6567805284657549`
+Example: `accounts/pub-xxxxxxxxxxxxxxxx`
 
 ---
 
@@ -94,22 +94,22 @@ Every Google Ads account that should use AFS revenue must be registered with `['
 
 ```ts
 // Active TRT AFS accounts
-'CID_9249163427': ['adsense'],   // TRT-AFS 01
-'CID_1209239435': ['adsense'],   // AFS-TRT-IST-01
-'CID_8804029676': ['adsense'],   // AFS-TRT-IST-02
-'CID_7993255100': ['adsense'],   // AFS-TRT-IST-03
-'CID_1910623888': ['adsense'],   // AFS-TRT-IST-04
-'CID_3516620995': ['adsense'],   // AFS-TRT-IST-05
-'CID_3723100505': ['adsense'],   // AFS-TRT-IST-06
-'CID_7667229570': ['adsense'],   // AFS-TRT-IST-07
-'CID_5312022044': ['adsense'],   // AFS-TRT-IST-08
-'CID_6117738068': ['adsense'],   // AFS-TRT-IST-09
-'CID_8862303731': ['adsense'],   // AFS-TRT-IST-10
-'CID_8811269949': ['adsense'],   // AFS-TRT-IST-11
-'CID_1013027376': ['adsense'],   // AFS-TRT-IST-12
-'CID_4518158484': ['adsense'],   // AFS-TRT-IST-13
-'CID_1056018921': ['adsense'],   // AFS-TRT-IST-14
-'CID_8739175417': ['adsense'],   // AFS-TRT-IST-15
+'CID_9249xxxxxx': ['adsense'],   // TRT-AFS 01
+'CID_1209xxxxxx': ['adsense'],   // AFS-TRT-IST-01
+'CID_8804xxxxxx': ['adsense'],   // AFS-TRT-IST-02
+'CID_7993xxxxxx': ['adsense'],   // AFS-TRT-IST-03
+'CID_1910xxxxxx': ['adsense'],   // AFS-TRT-IST-04
+'CID_3516xxxxxx': ['adsense'],   // AFS-TRT-IST-05
+'CID_3723xxxxxx': ['adsense'],   // AFS-TRT-IST-06
+'CID_7667xxxxxx': ['adsense'],   // AFS-TRT-IST-07
+'CID_5312xxxxxx': ['adsense'],   // AFS-TRT-IST-08
+'CID_6117xxxxxx': ['adsense'],   // AFS-TRT-IST-09
+'CID_8862xxxxxx': ['adsense'],   // AFS-TRT-IST-10
+'CID_8811xxxxxx': ['adsense'],   // AFS-TRT-IST-11
+'CID_1013xxxxxx': ['adsense'],   // AFS-TRT-IST-12
+'CID_4518xxxxxx': ['adsense'],   // AFS-TRT-IST-13
+'CID_1056xxxxxx': ['adsense'],   // AFS-TRT-IST-14
+'CID_8739xxxxxx': ['adsense'],   // AFS-TRT-IST-15
 ```
 
 ---
@@ -124,8 +124,8 @@ Response:
 {
   "accounts": [
     {
-      "name": "accounts/pub-6567805284657549",
-      "displayName": "Oarex Funding LLC",
+      "name": "accounts/pub-xxxxxxxxxxx",
+      "displayName": "xxxxxxxxx",
       "state": "READY",
       "type": "afs",
       "mcc": "primary"
@@ -137,7 +137,7 @@ Response:
 ```
 
 If the API token fails, it falls back to a hardcoded account:
-- `accounts/pub-6567805284657549` — Oarex Funding LLC
+- `accounts/pub-xxxxxxxxxxxxx` — ############
 
 ---
 
@@ -149,10 +149,10 @@ Request body:
 {
   "startDate": "2026-01-01",
   "endDate": "2026-01-31",
-  "adsenseAccountId": "accounts/pub-6567805284657549",
+  "adsenseAccountId": "accounts/pub-xxxxxxxxxx",
   "adsenseAccountType": "afs",
-  "customerId": "9249163427",
-  "accountIds": ["9249163427", "1209239435"],
+  "customerId": "9249xxxxxxx",
+  "accountIds": ["9249xxxxxxx", "1209xxxxxxx"],
   "forceLive": false
 }
 ```
