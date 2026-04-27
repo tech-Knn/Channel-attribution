@@ -97,7 +97,11 @@ router.post('/reconcile', async (req, res, next) => {
         articleId: article.id,
         externalId: article.article_id,
         domain: article.domain || 'articlespectrum.com',
-      }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+      }, {
+        jobId: `assign-${article.id}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+      });
     }
 
     res.json({ idleChannelsSynced: idleChannels.length, pendingArticlesQueued: pending.length });

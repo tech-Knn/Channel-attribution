@@ -107,7 +107,11 @@ async function expireArticle(article) {
 
       const waitingArticleId = await popWaitingArticle(domain);
       if (waitingArticleId) {
-        await queues.articleAssignment.add('assign-after-expiry', { articleId: Number(waitingArticleId), domain });
+        await queues.articleAssignment.add('assign-after-expiry', { articleId: Number(waitingArticleId), domain }, {
+          jobId: `assign-${waitingArticleId}`,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+        });
         reassigned = true;
         console.log(`[expiryWorker] Waiting article ${waitingArticleId} dispatched for assignment`);
       }

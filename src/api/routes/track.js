@@ -77,12 +77,11 @@ router.post('/pageview', async (req, res) => {
           [row.id],
         );
 
-        await queries.addArticleLifecycleEvent(row.id, 'reactivated', 'direct_tracking', views);
-
         await queues.articleAssignment.add('reactivate-article', {
           articleId: row.id,
           domain: row.domain || 'articlespectrum.com',
         }, {
+          jobId: `assign-${row.id}`,
           attempts: 3,
           backoff: { type: 'exponential', delay: 2000 },
         });

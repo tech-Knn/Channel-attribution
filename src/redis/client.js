@@ -18,15 +18,18 @@ const config = require('../config');
 const isTLS = config.redis.url.startsWith('rediss://');
 
 const client = new Redis(config.redis.url, {
-  // Retry with exponential back-off, capped at 5 s
   retryStrategy(times) {
     const delay = Math.min(times * 200, 5000);
     console.log(`[redis] reconnecting in ${delay}ms (attempt ${times})`);
     return delay;
   },
+  reconnectOnError(err) {
+    // Force reconnect on cluster failover or loading errors
+    return err.message.includes('READONLY') || err.message.includes('LOADING');
+  },
   maxRetriesPerRequest: null,   // Required by BullMQ — never reject queued cmds
   enableReadyCheck: true,
-  lazyConnect: false,           // Connect immediately on import
+  lazyConnect: false,
   ...(isTLS && { tls: { rejectUnauthorized: false } }),
 });
 
