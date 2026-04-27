@@ -12,9 +12,8 @@ const { sendAlert } = require('./slackNotifier');
 const QUEUE_NAME = 'article-expiry';
 
 async function processJob(job) {
-  console.log('[expiryWorker] Starting expiry check...');
-
   const zeroTrafficMinutes = config.expiry.zeroTrafficMinutes;
+  console.log(`[expiryWorker] Starting expiry check — window: ${zeroTrafficMinutes} min`);
 
   let expirableArticles;
   try {
