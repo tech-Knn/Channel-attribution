@@ -30,6 +30,7 @@ const app = express();
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 
+app.set('trust proxy', 1); // App Runner sits behind a load balancer
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(morgan('short'));
