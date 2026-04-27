@@ -1,5 +1,3 @@
-# AdSense API Setup — TRT (AFS Only)
-
 This document covers the complete setup for **AdSense for Search (AFS)** revenue integration for the TRT publisher (`topreserchtopics.com`) in AdSyntheX.
 
 ---

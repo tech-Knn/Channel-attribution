@@ -1,17 +1,8 @@
-/**
- * Database Queries — All SQL operations as async functions.
- *
- * Every query goes through the shared pool. Functions return plain objects
- * or arrays — no ORM, no magic. Callers get exactly what PostgreSQL returns.
- */
-
 'use strict';
 
 const { pool } = require('./pool');
 
-// ═══════════════════════════════════════════════════════════════════════════
 // Articles
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Create a new article.
@@ -68,7 +59,6 @@ async function listArticles({ status, category, dateFrom, dateTo, limit = 50, of
 
   const { rows } = await pool.query(sql, params);
 
-  // Count total
   const countSql = `SELECT COUNT(*)::int AS total FROM articles ${where}`;
   const { rows: countRows } = await pool.query(countSql, params.slice(0, params.length - 2));
   const total = countRows[0].total;
@@ -107,9 +97,7 @@ async function updateArticleStatus(id, status, extra = {}, client = null) {
   return rows[0] || null;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Channels
-// ═══════════════════════════════════════════════════════════════════════════
+// -- Channels -----------------------------------------------------------------
 
 /**
  * Create a new channel.
@@ -211,9 +199,7 @@ async function getChannelAssignmentHistory(channelId, limit = 20) {
   return rows;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // Assignments
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Create a new assignment.
@@ -311,9 +297,9 @@ async function listAssignments({ status, limit = 50, offset = 0 } = {}) {
   return { data: rows, total, limit, offset };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+
 // Revenue
-// ═══════════════════════════════════════════════════════════════════════════
+
 
 /**
  * Get revenue summary — today, 7 days, 30 days.
@@ -423,7 +409,6 @@ async function getArticleRevenue(articleId) {
            ELSE 0 END AS rpm
     FROM revenue_events WHERE article_id = $1`;
   const { rows: sumRows } = await pool.query(sumSql, [articleId]);
-
   return { events: rows, summary: sumRows[0] };
 }
 
@@ -461,9 +446,7 @@ async function getIdleChannelLoss({ limit = 50, offset = 0 } = {}) {
   return { data: rows, total: countRows[0].total, limit, offset };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Dashboard Stats
-// ═══════════════════════════════════════════════════════════════════════════
+// -- Dashboard ----------------------------------------------------------------
 
 /**
  * Get counts for dashboard summary cards.
@@ -485,7 +468,6 @@ async function getDashboardStats() {
  * Get recent alerts — expiries, orphan revenue, disapprovals.
  */
 async function getRecentAlerts(limit = 50) {
-  // Combine multiple alert sources
   const sql = `
     (
       SELECT 'expiry' AS alert_type,
@@ -530,9 +512,7 @@ async function getRecentAlerts(limit = 50) {
   return rows;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Channel Log
-// ═══════════════════════════════════════════════════════════════════════════
+// -- Channel Log --------------------------------------------------------------
 
 /**
  * Add a channel log entry.
@@ -547,13 +527,8 @@ async function addChannelLog(channelId, event, articleId = null, metadata = null
   return rows[0];
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Additional Functions (used by workers)
-// ═══════════════════════════════════════════════════════════════════════════
+// -- Workers ------------------------------------------------------------------
 
-/**
- * Find articles published 72-96 hours ago with zero revenue events.
- */
 async function getZeroTrafficArticles(zeroTrafficMinutes = 5) {
   const sql = `
     SELECT a.*
@@ -712,7 +687,6 @@ async function getActiveArticlesWithUrl() {
   return rows;
 }
 
-// kept for API route compatibility
 async function getArticlesForGaMonitor() {
   const sql = `
     SELECT id, article_id, url, status, last_traffic_at

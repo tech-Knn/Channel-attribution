@@ -33,13 +33,13 @@ const config = {
   // ── Pageview Tracking ───────────────────────────────────────
   tracking: {
     // Number of direct page views required to reactivate an expired article
-    pageViewThreshold: parseInt(process.env.PAGE_VIEW_THRESHOLD, 10) || 5,
+    pageViewThreshold: parseInt(process.env.PAGE_VIEW_THRESHOLD, 10) || 10,
   },
 
   // ── Expiry Settings ─────────────────────────────────────────
   expiry: {
     // Minutes of zero traffic in a window before an article is expired
-    zeroTrafficMinutes: parseInt(process.env.EXPIRY_ZERO_TRAFFIC_MINUTES, 10) || 5,
+    zeroTrafficMinutes: parseInt(process.env.EXPIRY_ZERO_TRAFFIC_MINUTES, 10) || 4320,
     // How often expiry check runs (ms)
     checkIntervalMs:         parseInt(process.env.EXPIRY_CHECK_INTERVAL_MS, 10)          || 60 * 1000,
     // How often GA4 reactivation check runs (ms)

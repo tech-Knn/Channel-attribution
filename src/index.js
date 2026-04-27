@@ -196,12 +196,25 @@ async function reconcilePendingArticles() {
       externalId: article.article_id,
       domain: article.domain || 'articlespectrum.com',
     }, {
+      jobId: `assign-${article.id}`,   // dedup — BullMQ ignores if already queued
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
     });
   }
 
   console.log(`[boot] reconcile: ${pending.length} job(s) queued for matching engine`);
+}
+
+const RECONCILE_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+async function periodicReconcile() {
+  try {
+    await syncIdleChannelsToRedis();
+    await reconcilePendingArticles();
+    console.log('[reconcile] periodic sync complete');
+  } catch (err) {
+    console.error('[reconcile] periodic sync error:', err.message);
+  }
 }
 
 let shuttingDown = false;
@@ -234,6 +247,10 @@ async function main() {
     loadWorkers();
     await startAPI();
     await reconcilePendingArticles(); // re-queue any pending articles
+
+    // Auto-heal Redis every 30 min — re-syncs idle channels + stuck pending articles
+    setInterval(periodicReconcile, RECONCILE_INTERVAL_MS);
+
     console.log('[boot] system ready');
   } catch (err) {
     console.error('[boot] fatal error during startup:', err);
