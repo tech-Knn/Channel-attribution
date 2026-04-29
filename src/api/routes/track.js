@@ -40,16 +40,12 @@ router.post('/pageview', async (req, res) => {
     if (!row) return;
 
     if (['assigned', 'active'].includes(row.status)) {
-      const windowMinutes = config.expiry.zeroTrafficMinutes;
       await pool.query(
         `UPDATE articles
-         SET last_traffic_at = CASE
-               WHEN last_traffic_at > NOW() THEN last_traffic_at
-               ELSE last_traffic_at + ($2 * INTERVAL '1 minute')
-             END,
+         SET last_traffic_at = NOW(),
              direct_pageviews = direct_pageviews + 1
          WHERE id = $1`,
-        [row.id, windowMinutes],
+        [row.id],
       );
       console.log(`[track] heartbeat article ${row.id}`);
 

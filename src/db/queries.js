@@ -251,6 +251,7 @@ async function listActiveAssignments() {
     SELECT a.*,
            art.article_id AS article_id,
            art.url AS article_url,
+           art.last_traffic_at,
            c.channel_id AS channel_id
     FROM assignments a
     JOIN articles art ON art.id = a.article_id
