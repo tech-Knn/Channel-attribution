@@ -147,11 +147,13 @@ function loadWorkers() {
   const { createChannelStateWorker }   = require('./workers/channelState');
   const { createExpiryWorker }         = require('./workers/expiryWorker');
   const { createGaMonitorWorker }      = require('./workers/gaMonitor');
+  const { createScribeNotifyWorker }   = require('./workers/scribeNotifyWorker');
 
   createMatchingEngineWorker();
   createChannelStateWorker();
   createExpiryWorker();
   createGaMonitorWorker();
+  createScribeNotifyWorker();
 
   console.log('[boot] workers started');
 }
@@ -170,6 +172,40 @@ async function startAPI() {
  * NOTE: Only touches 'pending' articles.
  *       Expired article reactivation is handled separately by gaMonitor worker.
  */
+/**
+ * On startup, re-queue Scribe notifications for all active assignments.
+ * Catches any callbacks that failed during previous deploy or downtime.
+ * Idempotent — Scribe just re-renders HTML with the same channel_id.
+ */
+async function reconcileScribeNotifications() {
+  const { queues } = require('./redis/queues');
+
+  const { rows } = await pool.query(`
+    SELECT a.article_id, c.channel_id, art.domain
+    FROM assignments a
+    JOIN channels c ON c.id = a.channel_id
+    JOIN articles art ON art.id = a.article_id
+    WHERE a.status = 'active'
+  `);
+
+  if (rows.length === 0) {
+    console.log('[boot] scribe-reconcile: no active assignments');
+    return;
+  }
+
+  console.log(`[boot] scribe-reconcile: queuing ${rows.length} Scribe notification(s) for active assignments`);
+
+  for (const row of rows) {
+    await queues.scribeNotify.add(
+      'reconcile-notify',
+      { articleSlug: row.article_id, channelId: row.channel_id, domain: row.domain || 'articlespectrum.com' },
+      { jobId: `scribe-reconcile-${row.article_id}`, attempts: 8, backoff: { type: 'exponential', delay: 3000 } },
+    );
+  }
+
+  console.log('[boot] scribe-reconcile: done');
+}
+
 async function reconcilePendingArticles() {
   const { queues } = require('./redis/queues');
 
@@ -246,7 +282,8 @@ async function main() {
     await setupRepeatableJobs();
     loadWorkers();
     await startAPI();
-    await reconcilePendingArticles(); // re-queue any pending articles
+    await reconcilePendingArticles();       // re-queue any pending articles
+    await reconcileScribeNotifications();   // re-sync Scribe HTML for all active assignments
 
     // Auto-heal Redis every 30 min — re-syncs idle channels + stuck pending articles
     setInterval(periodicReconcile, RECONCILE_INTERVAL_MS);
