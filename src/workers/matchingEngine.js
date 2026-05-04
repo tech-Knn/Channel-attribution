@@ -104,6 +104,27 @@ async function processJob(job) {
       `(assignment #${assignment.id})`,
     );
 
+    // Notify Scribe so it can bake the channel_id into the article HTML.
+    // Non-blocking — a callback failure must never break the assignment.
+    const scribeCallbackUrl = process.env.SCRIBE_CALLBACK_URL;
+    const scribeCallbackSecret = process.env.CHANNEL_ATTRIBUTION_SECRET || process.env.WEBHOOK_SECRET;
+    if (scribeCallbackUrl && scribeCallbackSecret) {
+      try {
+        const channel = await queries.getChannelById(channelId);
+        if (channel?.channel_id && article?.article_id) {
+          const axios = require('axios');
+          await axios.post(
+            `${scribeCallbackUrl}/api/channel-assigned`,
+            { articleSlug: article.article_id, channelId: channel.channel_id, domain },
+            { headers: { 'Content-Type': 'application/json', 'x-webhook-secret': scribeCallbackSecret }, timeout: 10000 },
+          );
+          console.log(`[matchingEngine] Scribe notified: channel ${channel.channel_id} → ${article.article_id}`);
+        }
+      } catch (callbackErr) {
+        console.warn('[matchingEngine] Scribe callback failed (non-fatal):', callbackErr.message);
+      }
+    }
+
     return {
       status: 'assigned',
       assignmentId: assignment.id,

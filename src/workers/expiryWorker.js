@@ -104,6 +104,24 @@ async function expireArticle(article) {
 
       console.log(`[expiryWorker] Article ${article.id} expired — channel ${freedChannelId} freed`);
 
+      // Notify Scribe to clear channel_id from the article HTML.
+      // Non-blocking — failure must never break expiry.
+      const scribeCallbackUrl = process.env.SCRIBE_CALLBACK_URL;
+      const scribeCallbackSecret = process.env.CHANNEL_ATTRIBUTION_SECRET || process.env.WEBHOOK_SECRET;
+      if (scribeCallbackUrl && scribeCallbackSecret && article.article_id) {
+        try {
+          const axios = require('axios');
+          await axios.post(
+            `${scribeCallbackUrl}/api/channel-assigned`,
+            { articleSlug: article.article_id, channelId: null, domain: article.domain || 'articlespectrum.com' },
+            { headers: { 'Content-Type': 'application/json', 'x-webhook-secret': scribeCallbackSecret }, timeout: 10000 },
+          );
+          console.log(`[expiryWorker] Scribe notified: channel cleared for ${article.article_id}`);
+        } catch (callbackErr) {
+          console.warn('[expiryWorker] Scribe callback failed (non-fatal):', callbackErr.message);
+        }
+      }
+
       const waitingArticleId = await popWaitingArticle(domain);
       if (waitingArticleId) {
         await queues.articleAssignment.add('assign-after-expiry', { articleId: Number(waitingArticleId), domain }, {
