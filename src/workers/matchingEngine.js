@@ -20,6 +20,7 @@ const { pool } = require('../db/pool');
 const queries = require('../db/queries');
 const { popOldestIdle, addToWaitingQueue } = require('../redis/channelQueue');
 const { setChannelAssignment, setArticleChannel } = require('../redis/stateStore');
+const { queues } = require('../redis/queues');
 
 const QUEUE_NAME = 'article-assignment';
 
@@ -104,25 +105,16 @@ async function processJob(job) {
       `(assignment #${assignment.id})`,
     );
 
-    // Notify Scribe so it can bake the channel_id into the article HTML.
-    // Non-blocking — a callback failure must never break the assignment.
-    const scribeCallbackUrl = process.env.SCRIBE_CALLBACK_URL;
-    const scribeCallbackSecret = process.env.CHANNEL_ATTRIBUTION_SECRET || process.env.WEBHOOK_SECRET;
-    if (scribeCallbackUrl && scribeCallbackSecret) {
-      try {
-        const channel = await queries.getChannelById(channelId);
-        if (channel?.channel_id && article?.article_id) {
-          const axios = require('axios');
-          await axios.post(
-            `${scribeCallbackUrl}/api/channel-assigned`,
-            { articleSlug: article.article_id, channelId: channel.channel_id, domain },
-            { headers: { 'Content-Type': 'application/json', 'x-webhook-secret': scribeCallbackSecret }, timeout: 10000 },
-          );
-          console.log(`[matchingEngine] Scribe notified: channel ${channel.channel_id} → ${article.article_id}`);
-        }
-      } catch (callbackErr) {
-        console.warn('[matchingEngine] Scribe callback failed (non-fatal):', callbackErr.message);
-      }
+    // Queue Scribe notification so channel_id gets baked into article HTML.
+    // Uses a dedicated BullMQ queue with retries — guaranteed delivery.
+    const channel = await queries.getChannelById(channelId);
+    if (channel?.channel_id && article?.article_id) {
+      await queues.scribeNotify.add(
+        'notify-assigned',
+        { articleSlug: article.article_id, channelId: channel.channel_id, domain },
+        { jobId: `scribe-assign-${article.article_id}`, attempts: 8, backoff: { type: 'exponential', delay: 3000 } },
+      );
+      console.log(`[matchingEngine] Scribe notify queued: channel ${channel.channel_id} → ${article.article_id}`);
     }
 
     return {

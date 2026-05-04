@@ -29,6 +29,7 @@ const queues = {
   revenueAttribution: new Queue('revenue-attribution', defaultOpts),
   articleExpiry:     new Queue('article-expiry', defaultOpts),
   gaMonitor:         new Queue('article-reactivation', defaultOpts),
+  scribeNotify:      new Queue('scribe-notify', defaultOpts),
 };
 
 /**
