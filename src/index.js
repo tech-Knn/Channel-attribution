@@ -181,7 +181,7 @@ async function reconcileScribeNotifications() {
   const { queues } = require('./redis/queues');
 
   const { rows } = await pool.query(`
-    SELECT a.article_id, c.channel_id, art.domain
+    SELECT art.article_id, c.channel_id, art.domain, art.callback_url
     FROM assignments a
     JOIN channels c ON c.id = a.channel_id
     JOIN articles art ON art.id = a.article_id
@@ -198,7 +198,12 @@ async function reconcileScribeNotifications() {
   for (const row of rows) {
     await queues.scribeNotify.add(
       'reconcile-notify',
-      { articleSlug: row.article_id, channelId: row.channel_id, domain: row.domain || 'articlespectrum.com' },
+      {
+        articleSlug: row.article_id,
+        channelId:   row.channel_id,
+        domain:      row.domain || 'articlespectrum.com',
+        callbackUrl: row.callback_url || null,
+      },
       { jobId: `scribe-reconcile-${row.article_id}`, attempts: 8, backoff: { type: 'exponential', delay: 3000 } },
     );
   }

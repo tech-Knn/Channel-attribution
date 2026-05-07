@@ -5,20 +5,25 @@ const axios = require('axios');
 
 const QUEUE_NAME = 'scribe-notify';
 
-const scribeCallbackUrl = process.env.SCRIBE_CALLBACK_URL;
-const scribeCallbackSecret = process.env.CHANNEL_ATTRIBUTION_SECRET || process.env.WEBHOOK_SECRET;
+const defaultCallbackUrl = process.env.SCRIBE_CALLBACK_URL;
+const callbackSecret = process.env.CHANNEL_ATTRIBUTION_SECRET || process.env.WEBHOOK_SECRET;
 
 /**
  * Job data shape:
- *   { articleSlug, channelId, domain }
+ *   { articleSlug, channelId, domain, callbackUrl? }
  *   channelId present  → assignment (bake into HTML)
  *   channelId null     → expiry (clear from HTML)
+ *   callbackUrl        → per-article override; falls back to SCRIBE_CALLBACK_URL
+ *                        (lets Scribe and MetaTermux share the same domain pool
+ *                         while each receiving its own callbacks).
  */
 async function processJob(job) {
-  const { articleSlug, channelId, domain } = job.data;
+  const { articleSlug, channelId, domain, callbackUrl } = job.data;
 
-  if (!scribeCallbackUrl || !scribeCallbackSecret) {
-    console.warn('[scribeNotify] SCRIBE_CALLBACK_URL or secret not set — skipping');
+  const targetBaseUrl = callbackUrl || defaultCallbackUrl;
+
+  if (!targetBaseUrl || !callbackSecret) {
+    console.warn('[scribeNotify] callback URL or secret not set — skipping');
     return { status: 'skipped', reason: 'env_not_configured' };
   }
 
@@ -27,21 +32,21 @@ async function processJob(job) {
   }
 
   const action = channelId ? `assign channel ${channelId}` : 'clear channel (expiry)';
-  console.log(`[scribeNotify] Notifying Scribe: ${articleSlug} — ${action} (attempt ${job.attemptsMade + 1})`);
+  console.log(`[scribeNotify] Notifying ${targetBaseUrl}: ${articleSlug} — ${action} (attempt ${job.attemptsMade + 1})`);
 
-  const response = await axios.post(
-    `${scribeCallbackUrl}/api/channel-assigned`,
+  await axios.post(
+    `${targetBaseUrl.replace(/\/$/, '')}/api/channel-assigned`,
     { articleSlug, channelId: channelId || null, domain: domain || 'articlespectrum.com' },
     {
       headers: {
         'Content-Type': 'application/json',
-        'x-webhook-secret': scribeCallbackSecret,
+        'x-webhook-secret': callbackSecret,
       },
       timeout: 15000,
     },
   );
 
-  console.log(`[scribeNotify] Scribe confirmed: ${articleSlug} — ${action}`);
+  console.log(`[scribeNotify] Confirmed: ${articleSlug} — ${action}`);
   return { status: 'ok', articleSlug, channelId };
 }
 

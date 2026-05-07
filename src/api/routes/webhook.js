@@ -29,7 +29,7 @@ router.post('/article-published', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid webhook secret' });
     }
 
-    const { articleId, url, category, publishedAt, domain } = req.body;
+    const { articleId, url, category, publishedAt, domain, callbackUrl } = req.body;
 
     if (!articleId) {
       return res.status(400).json({ error: 'articleId is required' });
@@ -42,12 +42,13 @@ router.post('/article-published', async (req, res, next) => {
 
     // Create article in DB — id is auto-generated
     const article = await queries.createArticle({
-      articleId: String(articleId),
-      url:        url || null,
-      category:   category || null,
-      status:     'pending',
+      articleId:   String(articleId),
+      url:         url || null,
+      category:    category || null,
+      status:      'pending',
       publishedAt: new Date(publishedAt),
-      domain:     articleDomain,
+      domain:      articleDomain,
+      callbackUrl: callbackUrl || null,
     });
 
     // Queue the matching engine — it will pick the oldest idle channel for this domain

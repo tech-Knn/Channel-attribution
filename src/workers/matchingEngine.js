@@ -111,7 +111,12 @@ async function processJob(job) {
     if (channel?.channel_id && article?.article_id) {
       await queues.scribeNotify.add(
         'notify-assigned',
-        { articleSlug: article.article_id, channelId: channel.channel_id, domain },
+        {
+          articleSlug: article.article_id,
+          channelId:   channel.channel_id,
+          domain,
+          callbackUrl: article.callback_url || null,
+        },
         { jobId: `scribe-assign-${article.article_id}`, attempts: 8, backoff: { type: 'exponential', delay: 3000 } },
       );
       console.log(`[matchingEngine] Scribe notify queued: channel ${channel.channel_id} → ${article.article_id}`);
