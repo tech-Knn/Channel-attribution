@@ -7,12 +7,12 @@ const { pool } = require('./pool');
 /**
  * Create a new article.
  */
-async function createArticle({ articleId, url, category, status = 'pending', publishedAt, domain = 'articlespectrum.com' }) {
+async function createArticle({ articleId, url, category, status = 'pending', publishedAt, domain = 'articlespectrum.com', callbackUrl = null }) {
   const sql = `
-    INSERT INTO articles (article_id, url, category, status, published_at, domain)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO articles (article_id, url, category, status, published_at, domain, callback_url)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *`;
-  const { rows } = await pool.query(sql, [articleId, url, category, status, publishedAt, domain]);
+  const { rows } = await pool.query(sql, [articleId, url, category, status, publishedAt, domain, callbackUrl]);
   return rows[0];
 }
 

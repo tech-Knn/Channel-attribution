@@ -109,7 +109,12 @@ async function expireArticle(article) {
       if (article.article_id) {
         await queues.scribeNotify.add(
           'notify-expired',
-          { articleSlug: article.article_id, channelId: null, domain: article.domain || 'articlespectrum.com' },
+          {
+            articleSlug: article.article_id,
+            channelId:   null,
+            domain:      article.domain || 'articlespectrum.com',
+            callbackUrl: article.callback_url || null,
+          },
           { jobId: `scribe-expire-${article.article_id}`, attempts: 8, backoff: { type: 'exponential', delay: 3000 } },
         );
         console.log(`[expiryWorker] Scribe notify queued: channel cleared for ${article.article_id}`);
