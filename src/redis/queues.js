@@ -54,6 +54,11 @@ async function setupRepeatableJobs() {
     repeat: { every: config.expiry.ga4CheckIntervalMs },
   });
 
+  // Revenue attribution pull — every 15 minutes
+  await queues.revenueAttribution.add('pull-revenue', {}, {
+    repeat: { every: 15 * 60 * 1000 },
+  });
+
   console.log('[queues] Repeatable jobs configured');
 }
 

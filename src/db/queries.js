@@ -305,18 +305,47 @@ async function listAssignments({ status, limit = 50, offset = 0 } = {}) {
 /**
  * Get revenue summary — today, 7 days, 30 days.
  */
-async function getRevenueSummary() {
+/**
+ * Get revenue summary — today, 7 days, 30 days.
+ * Optional domain filter.
+ */
+/**
+ * Get revenue summary.
+ *
+ * @param {Object} opts
+ * @param {string} [opts.from] — ISO date 'YYYY-MM-DD' (inclusive)
+ * @param {string} [opts.to]   — ISO date 'YYYY-MM-DD' (inclusive)
+ *
+ * If from/to provided: returns aggregated metrics for that range.
+ * If not: returns today/7d/30d hardcoded windows (legacy behavior).
+ */
+async function getRevenueSummary({ from, to } = {}) {
+  if (from && to) {
+    const sql = `
+      SELECT
+        COALESCE(SUM(revenue), 0)::numeric    AS revenue_range,
+        COALESCE(SUM(impressions), 0)::int    AS impressions_range,
+        COALESCE(SUM(clicks), 0)::int         AS clicks_range,
+        MAX(pulled_at)                        AS last_pulled_at
+      FROM revenue_events
+      WHERE period_start >= $1::date
+        AND period_start < ($2::date + INTERVAL '1 day')`;
+    const { rows } = await pool.query(sql, [from, to]);
+    return { ...rows[0], range: { from, to } };
+  }
+
+  // Legacy behavior — today / 7d / 30d
   const sql = `
     SELECT
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '1 day' THEN revenue ELSE 0 END), 0)::numeric AS revenue_today,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '1 day' THEN impressions ELSE 0 END), 0)::int AS impressions_today,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '1 day' THEN clicks ELSE 0 END), 0)::int AS clicks_today,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '7 days' THEN revenue ELSE 0 END), 0)::numeric AS revenue_7d,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '7 days' THEN impressions ELSE 0 END), 0)::int AS impressions_7d,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '7 days' THEN clicks ELSE 0 END), 0)::int AS clicks_7d,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '30 days' THEN revenue ELSE 0 END), 0)::numeric AS revenue_30d,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '30 days' THEN impressions ELSE 0 END), 0)::int AS impressions_30d,
-      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '30 days' THEN clicks ELSE 0 END), 0)::int AS clicks_30d
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '1 day'  THEN revenue     ELSE 0 END), 0)::numeric AS revenue_today,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '1 day'  THEN impressions ELSE 0 END), 0)::int     AS impressions_today,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '1 day'  THEN clicks      ELSE 0 END), 0)::int     AS clicks_today,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '7 days' THEN revenue     ELSE 0 END), 0)::numeric AS revenue_7d,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '7 days' THEN impressions ELSE 0 END), 0)::int     AS impressions_7d,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '7 days' THEN clicks      ELSE 0 END), 0)::int     AS clicks_7d,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '30 days' THEN revenue     ELSE 0 END), 0)::numeric AS revenue_30d,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '30 days' THEN impressions ELSE 0 END), 0)::int     AS impressions_30d,
+      COALESCE(SUM(CASE WHEN period_start >= NOW() - INTERVAL '30 days' THEN clicks      ELSE 0 END), 0)::int     AS clicks_30d
     FROM revenue_events`;
   const { rows } = await pool.query(sql);
   return rows[0];
@@ -325,66 +354,129 @@ async function getRevenueSummary() {
 /**
  * Revenue per article from materialized view.
  */
-async function getRevenueByArticle({ limit = 50, offset = 0, sortBy = 'total_revenue', sortDir = 'DESC' } = {}) {
+async function getRevenueByArticle({ limit = 50, offset = 0, sortBy = 'total_revenue', sortDir = 'DESC', from, to } = {}) {
   const allowedSorts = ['total_revenue', 'total_impressions', 'total_clicks', 'rpm', 'published_at'];
   const sort = allowedSorts.includes(sortBy) ? sortBy : 'total_revenue';
   const dir = sortDir.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-  // Join live articles table for current status — materialized view status can be stale
+  // No date filter → use materialized view (Option Y, fast path)
+  if (!from || !to) {
+    const sql = `
+      SELECT mv.*, a.status AS article_status
+      FROM mv_revenue_per_article mv
+      JOIN articles a ON a.article_id = mv.article_id
+      ORDER BY mv.${sort} ${dir}
+      LIMIT $1 OFFSET $2`;
+    const { rows } = await pool.query(sql, [limit, offset]);
+    const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM mv_revenue_per_article`);
+    return { data: rows, total: countRows[0].total, limit, offset };
+  }
+
+  // Date filter → query revenue_events directly, aggregate per article
   const sql = `
-    SELECT mv.*, a.status AS article_status
-    FROM mv_revenue_per_article mv
-    JOIN articles a ON a.article_id = mv.article_id
-    ORDER BY mv.${sort} ${dir}
-    LIMIT $1 OFFSET $2`;
-  const { rows } = await pool.query(sql, [limit, offset]);
+    SELECT
+      a.id AS db_id,
+      a.article_id,
+      a.url,
+      a.category,
+      a.published_at,
+      a.status AS article_status,
+      COALESCE(SUM(r.impressions), 0) AS total_impressions,
+      COALESCE(SUM(r.clicks), 0) AS total_clicks,
+      COALESCE(SUM(r.revenue), 0) AS total_revenue,
+      CASE WHEN SUM(r.impressions) > 0
+           THEN (SUM(r.revenue) / SUM(r.impressions)) * 1000
+           ELSE 0 END AS rpm,
+      MAX(r.pulled_at) AS last_pulled_at,
+      MAX(r.period_end) AS last_period_end
+    FROM articles a
+    LEFT JOIN revenue_events r
+      ON r.article_id = a.id
+     AND r.period_start >= $1::date
+     AND r.period_start < ($2::date + INTERVAL '1 day')
+    GROUP BY a.id, a.article_id, a.url, a.category, a.published_at, a.status
+    ORDER BY ${sort} ${dir}
+    LIMIT $3 OFFSET $4`;
+  const { rows } = await pool.query(sql, [from, to, limit, offset]);
 
-  const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM mv_revenue_per_article`);
-  const total = countRows[0].total;
-
-  return { data: rows, total, limit, offset };
+  const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM articles`);
+  return { data: rows, total: countRows[0].total, limit, offset };
 }
 
 /**
  * Revenue per channel from materialized view.
  */
-async function getRevenueByChannel({ limit = 50, offset = 0, sortBy = 'total_revenue', sortDir = 'DESC' } = {}) {
+async function getRevenueByChannel({ limit = 50, offset = 0, sortBy = 'total_revenue', sortDir = 'DESC', from, to } = {}) {
   const allowedSorts = ['total_revenue', 'total_impressions', 'total_clicks', 'articles_served'];
   const sort = allowedSorts.includes(sortBy) ? sortBy : 'total_revenue';
   const dir = sortDir.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
+  if (!from || !to) {
+    const sql = `
+      SELECT * FROM mv_revenue_per_channel
+      ORDER BY ${sort} ${dir}
+      LIMIT $1 OFFSET $2`;
+    const { rows } = await pool.query(sql, [limit, offset]);
+    const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM mv_revenue_per_channel`);
+    return { data: rows, total: countRows[0].total, limit, offset };
+  }
+
   const sql = `
-    SELECT * FROM mv_revenue_per_channel
+    SELECT
+      c.id AS db_id,
+      c.channel_id,
+      c.status AS channel_status,
+      COUNT(DISTINCT r.article_id) AS articles_served,
+      COALESCE(SUM(r.impressions), 0) AS total_impressions,
+      COALESCE(SUM(r.clicks), 0) AS total_clicks,
+      COALESCE(SUM(r.revenue), 0) AS total_revenue,
+      MAX(r.pulled_at) AS last_pulled_at,
+      MAX(r.period_end) AS last_period_end
+    FROM channels c
+    LEFT JOIN revenue_events r
+      ON r.channel_id = c.id
+     AND r.period_start >= $1::date
+     AND r.period_start < ($2::date + INTERVAL '1 day')
+    GROUP BY c.id, c.channel_id, c.status
     ORDER BY ${sort} ${dir}
-    LIMIT $1 OFFSET $2`;
-  const { rows } = await pool.query(sql, [limit, offset]);
+    LIMIT $3 OFFSET $4`;
+  const { rows } = await pool.query(sql, [from, to, limit, offset]);
 
-  const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM mv_revenue_per_channel`);
-  const total = countRows[0].total;
-
-  return { data: rows, total, limit, offset };
+  const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM channels`);
+  return { data: rows, total: countRows[0].total, limit, offset };
 }
 
 /**
  * Get unattributed revenue (revenue with no article assignment).
  */
-async function getUnattributedRevenue({ limit = 50, offset = 0 } = {}) {
+async function getUnattributedRevenue({ limit = 50, offset = 0, from, to } = {}) {
+  const params = [];
+  let dateFilter = '';
+  let idx = 1;
+  if (from && to) {
+    dateFilter = `AND r.period_start >= $${idx++}::date AND r.period_start < ($${idx++}::date + INTERVAL '1 day')`;
+    params.push(from, to);
+  }
+
   const sql = `
     SELECT r.*, c.channel_id AS channel_id
     FROM revenue_events r
     JOIN channels c ON c.id = r.channel_id
-    WHERE r.attributed = FALSE OR r.article_id IS NULL
+    WHERE (r.attributed = FALSE OR r.article_id IS NULL)
+      ${dateFilter}
     ORDER BY r.period_start DESC
-    LIMIT $1 OFFSET $2`;
-  const { rows } = await pool.query(sql, [limit, offset]);
+    LIMIT $${idx++} OFFSET $${idx++}`;
+  params.push(limit, offset);
+
+  const { rows } = await pool.query(sql, params);
 
   const countSql = `
-    SELECT COUNT(*)::int AS total FROM revenue_events
-    WHERE attributed = FALSE OR article_id IS NULL`;
-  const { rows: countRows } = await pool.query(countSql);
-  const total = countRows[0].total;
-
-  return { data: rows, total, limit, offset };
+    SELECT COUNT(*)::int AS total FROM revenue_events r
+    WHERE (r.attributed = FALSE OR r.article_id IS NULL)
+      ${dateFilter}`;
+  const countParams = from && to ? [from, to] : [];
+  const { rows: countRows } = await pool.query(countSql, countParams);
+  return { data: rows, total: countRows[0].total, limit, offset };
 }
 
 /**
@@ -602,6 +694,130 @@ const getActiveAssignmentByChannel = getActiveAssignmentForChannel;
 // Exports
 // ---------------------------------------------------------------------------
 
+/**
+ * Get per-pull revenue events with filters.
+ * Each row is one 15-min AdSense pull window.
+ *
+ * @param {Object} opts
+ * @param {string} [opts.domain]  — filter by channel.domain OR article.domain
+ * @param {Date}   [opts.from]    — start of date range (default: 30 days ago)
+ * @param {Date}   [opts.to]      — end of date range (default: now)
+ * @param {number} [opts.limit]   — default 100, max 500
+ * @param {number} [opts.offset]  — default 0
+ */
+async function getRevenueTimeline({ domain, from, to, limit = 100, offset = 0 } = {}) {
+  const dateFrom = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const dateTo   = to   ? new Date(to)   : new Date();
+  const safeLimit  = Math.min(parseInt(limit, 10) || 100, 500);
+  const safeOffset = parseInt(offset, 10) || 0;
+
+  const conditions = ['r.period_start BETWEEN $1 AND $2'];
+  const params = [dateFrom, dateTo];
+
+  if (domain) {
+    conditions.push(`(c.domain = $3 OR a.domain = $3)`);
+    params.push(domain);
+  }
+
+  const where = conditions.join(' AND ');
+
+  const sql = `
+    SELECT
+      r.id,
+      r.period_start,
+      r.period_end,
+      r.pulled_at,
+      r.impressions,
+      r.clicks,
+      r.revenue,
+      r.attributed,
+      c.channel_id,
+      c.domain      AS channel_domain,
+      c.status      AS channel_status,
+      a.article_id,
+      a.url         AS article_url,
+      a.domain      AS article_domain,
+      a.status      AS article_status,
+      a.category    AS article_category
+    FROM revenue_events r
+    LEFT JOIN channels c ON c.id = r.channel_id
+    LEFT JOIN articles a ON a.id = r.article_id
+    WHERE ${where}
+    ORDER BY r.period_start DESC
+    LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+
+  const dataParams = [...params, safeLimit, safeOffset];
+  const { rows } = await pool.query(sql, dataParams);
+
+  // Count total matching rows (for pagination)
+  const countSql = `
+    SELECT COUNT(*)::int AS total
+    FROM revenue_events r
+    LEFT JOIN channels c ON c.id = r.channel_id
+    LEFT JOIN articles a ON a.id = r.article_id
+    WHERE ${where}`;
+  const { rows: countRows } = await pool.query(countSql, params);
+
+  return {
+    data: rows,
+    total: countRows[0].total,
+    limit: safeLimit,
+    offset: safeOffset,
+    range: { from: dateFrom.toISOString(), to: dateTo.toISOString() },
+    filter: { domain: domain || null },
+  };
+}
+
+
+/**
+ * Get list of all domains with channel and article counts.
+ * For frontend dropdown of available domains.
+ */
+async function getDomains() {
+  const sql = `
+    WITH channel_domains AS (
+      SELECT domain, COUNT(*)::int AS channels_count
+      FROM channels
+      GROUP BY domain
+    ),
+    article_domains AS (
+      SELECT domain, COUNT(*)::int AS articles_count
+      FROM articles
+      GROUP BY domain
+    ),
+    revenue_domains AS (
+      SELECT
+        COALESCE(c.domain, a.domain) AS domain,
+        COALESCE(SUM(r.revenue), 0)::numeric AS total_revenue,
+        COALESCE(SUM(r.impressions), 0)::int AS total_impressions,
+        COALESCE(SUM(r.clicks), 0)::int AS total_clicks
+      FROM revenue_events r
+      LEFT JOIN channels c ON c.id = r.channel_id
+      LEFT JOIN articles a ON a.id = r.article_id
+      GROUP BY COALESCE(c.domain, a.domain)
+    )
+    SELECT
+      d.domain,
+      COALESCE(cd.channels_count, 0) AS channels_count,
+      COALESCE(ad.articles_count, 0) AS articles_count,
+      COALESCE(rd.total_revenue, 0)::numeric AS total_revenue,
+      COALESCE(rd.total_impressions, 0)::int AS total_impressions,
+      COALESCE(rd.total_clicks, 0)::int AS total_clicks
+    FROM (
+      SELECT domain FROM channel_domains
+      UNION
+      SELECT domain FROM article_domains
+    ) d
+    LEFT JOIN channel_domains cd ON cd.domain = d.domain
+    LEFT JOIN article_domains ad ON ad.domain = d.domain
+    LEFT JOIN revenue_domains rd ON rd.domain = d.domain
+    WHERE d.domain IS NOT NULL
+    ORDER BY total_revenue DESC, d.domain ASC`;
+
+  const { rows } = await pool.query(sql);
+  return rows;
+}
+
 module.exports = {
   // Articles
   createArticle,
@@ -626,6 +842,7 @@ module.exports = {
   listAssignments,
 
   // Revenue
+  // Revenue
   getRevenueSummary,
   getRevenueByArticle,
   getRevenueByChannel,
@@ -633,6 +850,8 @@ module.exports = {
   refreshMaterializedViews,
   refreshIdleLossView,
   getIdleChannelLoss,
+  getRevenueTimeline,   // ← add
+  getDomains,           // ← add
 
   // Dashboard
   getDashboardStats,

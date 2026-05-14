@@ -52,7 +52,7 @@ async function fetchRevenueData(publisherId, _apiKey, startTime, endTime) {
   qs.append('endDate.year',      String(end.getFullYear()));
   qs.append('endDate.month',     String(end.getMonth() + 1));
   qs.append('endDate.day',       String(end.getDate()));
-  qs.append('dimensions',        'CUSTOM_SEARCH_STYLE_ID');
+  qs.append('dimensions',        'CUSTOM_CHANNEL_ID');
   qs.append('metrics',           'ESTIMATED_EARNINGS');
   qs.append('metrics',           'IMPRESSIONS');
   qs.append('metrics',           'CLICKS');
@@ -83,16 +83,19 @@ async function fetchRevenueData(publisherId, _apiKey, startTime, endTime) {
 
   // Cell order: CUSTOM_SEARCH_STYLE_ID, ESTIMATED_EARNINGS, IMPRESSIONS, CLICKS
   const result = rows
-    .map((row) => {
-      const c = row.cells || [];
-      return {
-        channelId:   c[0]?.value || '',
-        revenue:     parseFloat(c[1]?.value || '0'),
-        impressions: parseInt(c[2]?.value  || '0', 10),
-        clicks:      parseInt(c[3]?.value  || '0', 10),
-      };
-    })
-    .filter((r) => r.channelId && r.channelId !== 'NONE');
+  .map((row) => {
+    const c = row.cells || [];
+    const rawId = c[0]?.value || '';
+    // AdSense returns "partner-pub-...:CHANNEL_ID" — strip the prefix
+    const channelId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
+    return {
+      channelId,
+      revenue:     parseFloat(c[1]?.value || '0'),
+      impressions: parseInt(c[2]?.value  || '0', 10),
+      clicks:      parseInt(c[3]?.value  || '0', 10),
+    };
+  })
+  .filter((r) => r.channelId && r.channelId !== 'NONE');
 
   console.log(`[afsClient] ${result.length} channel(s) with revenue`);
   return result;
