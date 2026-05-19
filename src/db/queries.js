@@ -713,6 +713,63 @@ async function upsertRevenueEvent({
 }
 
 /**
+ * Per-assignment revenue timeline — drives the dashboard's "Timeline" tab.
+ *
+ * Returns one row per (channel, article, assignment_lifecycle) with
+ * revenue/impressions/clicks summed. Read from the v_assignment_revenue
+ * view created in migration 010.
+ *
+ * Filters (all optional):
+ *   channelId / articleId          — exact external id match
+ *   status                         — 'active' | 'expired' | 'completed'
+ *   from / to                      — by assigned_at
+ *   hideZero                       — default true: skip rows where revenue=0
+ *   sortBy: 'revenue' | 'assigned_at' | 'impressions' | 'clicks'
+ *   sortDir: 'ASC' | 'DESC'
+ */
+async function getAssignmentRevenue({
+  channelId, articleId, status,
+  from, to,
+  hideZero = true,
+  limit = 50, offset = 0,
+  sortBy = 'assigned_at', sortDir = 'DESC',
+} = {}) {
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+
+  if (channelId)  { conditions.push(`channel_id = $${idx++}`); params.push(String(channelId)); }
+  if (articleId)  { conditions.push(`article_id = $${idx++}`); params.push(String(articleId)); }
+  if (status)     { conditions.push(`assignment_status = $${idx++}`); params.push(status); }
+  if (from)       { conditions.push(`assigned_at >= $${idx++}`); params.push(from); }
+  if (to)         { conditions.push(`assigned_at < $${idx++}`); params.push(to); }
+  if (hideZero)   { conditions.push(`revenue > 0`); }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const allowedSort = ['revenue', 'assigned_at', 'unassigned_at', 'impressions', 'clicks'];
+  const sort = allowedSort.includes(sortBy) ? sortBy : 'assigned_at';
+  const dir  = sortDir?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+  const dataSql = `
+    SELECT assignment_id, channel_id, article_id,
+           assigned_at, unassigned_at, assignment_status,
+           impressions, clicks, revenue
+      FROM v_assignment_revenue
+      ${where}
+      ORDER BY ${sort} ${dir} NULLS LAST, assignment_id DESC
+      LIMIT $${idx++} OFFSET $${idx++}`;
+  params.push(limit, offset);
+
+  const { rows } = await pool.query(dataSql, params);
+
+  const countSql = `SELECT COUNT(*)::int AS total FROM v_assignment_revenue ${where}`;
+  const { rows: countRows } = await pool.query(countSql, params.slice(0, params.length - 2));
+
+  return { data: rows, total: countRows[0].total, limit, offset };
+}
+
+/**
  * Return every assignment on this channel whose lifetime overlaps
  * [periodStart, periodEnd]. Used by the revenue worker to find all
  * articles that held the channel during a given AdSense reporting day.
@@ -955,6 +1012,7 @@ module.exports = {
   upsertRevenueEvent,
   getAssignmentsOverlapping,
   getRecentlyClosedAssignment,
+  getAssignmentRevenue,
 
   // GA4 monitoring
   getArticlesForGaMonitor,

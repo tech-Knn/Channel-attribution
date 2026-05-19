@@ -1,14 +1,15 @@
 /**
  * Revenue Routes
  *
- * GET    /api/revenue/summary       — Overall revenue stats (today, 7d, 30d)
- * GET    /api/revenue/by-article    — Revenue per article (materialized view)
- * GET    /api/revenue/by-channel    — Revenue per channel (materialized view)
- * GET    /api/revenue/unattributed  — Revenue with no article assignment
- * GET    /api/revenue/timeline      — Per-pull revenue with date/domain filters
- * GET    /api/revenue/domains       — List of domains with totals (for dropdown)
- * POST   /api/revenue/refresh       — Manually refresh materialized views
- * POST   /api/revenue/pull          — Manually trigger an AdSense revenue pull
+ * GET    /api/revenue/summary         — Overall revenue stats (today, 7d, 30d)
+ * GET    /api/revenue/by-article      — Revenue per article (materialized view)
+ * GET    /api/revenue/by-channel      — Revenue per channel (materialized view)
+ * GET    /api/revenue/by-assignment   — One row per channel-article assignment with revenue
+ * GET    /api/revenue/unattributed    — Revenue with no article assignment
+ * GET    /api/revenue/timeline        — Per-pull revenue with date/domain filters
+ * GET    /api/revenue/domains         — List of domains with totals (for dropdown)
+ * POST   /api/revenue/refresh         — Manually refresh materialized views
+ * POST   /api/revenue/pull            — Manually trigger an AdSense revenue pull
  */
 
 'use strict';
@@ -112,6 +113,32 @@ router.get('/by-channel', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+
+// ── GET /api/revenue/by-assignment ─────────────────────────────────────────
+// One row per channel-article assignment (the timeline view).
+// Filters:
+//   ?channelId=...          exact channel match
+//   ?articleId=...          exact article match
+//   ?status=active|expired|completed
+//   ?from=ISO&to=ISO        filter by assigned_at
+//   ?hideZero=true          (default true) skip $0 rows; pass false to show all
+//   ?sortBy=revenue|assigned_at|impressions|clicks  (default assigned_at)
+//   ?sortDir=ASC|DESC       (default DESC)
+//   ?limit=50&offset=0
+router.get('/by-assignment', async (req, res, next) => {
+  try {
+    const { channelId, articleId, status, from, to, hideZero, sortBy, sortDir, limit, offset } = req.query;
+    const result = await queries.getAssignmentRevenue({
+      channelId, articleId, status, from, to,
+      hideZero: hideZero === 'false' ? false : true,
+      limit:    Math.min(parseInt(limit, 10)  || 50, 200),
+      offset:   parseInt(offset, 10) || 0,
+      sortBy:   sortBy || 'assigned_at',
+      sortDir:  sortDir || 'DESC',
+    });
+    res.json(result);
+  } catch (err) { next(err); }
+});
 
 // ── GET /api/revenue/unattributed ──────────────────────────────────────────
 
