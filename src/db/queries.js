@@ -656,34 +656,120 @@ async function getZeroRevenueArticles(hoursMin = 72, hoursMax = 96) {
  */
 async function closeAssignmentByArticle(articleId, status = 'expired', client = null) {
   const db = client || pool;
+  // Snapshot articles.direct_pageviews into assignments.pageviews_at_close.
+  // The revenueAttribution worker uses it as the weight for pro-rata
+  // splitting daily revenue between assignments that shared a channel-day.
   const sql = `
-    UPDATE assignments SET unassigned_at = NOW(), status = $2
-    WHERE article_id = $1 AND status = 'active'
-    RETURNING *`;
+    UPDATE assignments asn
+       SET unassigned_at      = NOW(),
+           status             = $2,
+           pageviews_at_close = COALESCE(art.direct_pageviews, 0)
+      FROM articles art
+     WHERE asn.article_id = $1
+       AND asn.status     = 'active'
+       AND art.id         = asn.article_id
+    RETURNING asn.*`;
   const { rows } = await db.query(sql, [articleId, status]);
   return rows[0] || null;
 }
 
 /**
- * Upsert a revenue event (dedup on channel_id + period_start).
+ * Upsert a revenue event.
+ *
+ * Unique key after migration 009 is (channel_id, assignment_id, period_start).
+ * Rows with assignment_id IS NULL are orphan revenue (channel had no assignment
+ * during the period) and Postgres treats each NULL as distinct, so orphan
+ * rows can repeat across pulls without colliding.
  */
-async function upsertRevenueEvent({ channelId, articleId, assignmentId, impressions, clicks, revenue, periodStart, periodEnd, attributed = true }) {
+async function upsertRevenueEvent({
+  channelId, articleId, assignmentId,
+  impressions, clicks, revenue,
+  periodStart, periodEnd,
+  attributed = true, attributedLate = false,
+}) {
   const sql = `
-    INSERT INTO revenue_events (channel_id, article_id, assignment_id, impressions, clicks, revenue, period_start, period_end, attributed)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    ON CONFLICT (channel_id, period_start)
+    INSERT INTO revenue_events
+        (channel_id, article_id, assignment_id, impressions, clicks, revenue,
+         period_start, period_end, attributed, attributed_late)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (channel_id, assignment_id, period_start)
     DO UPDATE SET
-      article_id = EXCLUDED.article_id,
-      assignment_id = EXCLUDED.assignment_id,
-      impressions = EXCLUDED.impressions,
-      clicks = EXCLUDED.clicks,
-      revenue = EXCLUDED.revenue,
-      period_end = EXCLUDED.period_end,
-      attributed = EXCLUDED.attributed,
-      pulled_at = NOW()
+      article_id      = EXCLUDED.article_id,
+      impressions     = EXCLUDED.impressions,
+      clicks          = EXCLUDED.clicks,
+      revenue         = EXCLUDED.revenue,
+      period_end      = EXCLUDED.period_end,
+      attributed      = EXCLUDED.attributed,
+      attributed_late = EXCLUDED.attributed_late,
+      pulled_at       = NOW()
     RETURNING *`;
-  const { rows } = await pool.query(sql, [channelId, articleId, assignmentId, impressions, clicks, revenue, periodStart, periodEnd, attributed]);
+  const { rows } = await pool.query(sql, [
+    channelId, articleId, assignmentId,
+    impressions, clicks, revenue,
+    periodStart, periodEnd,
+    attributed, attributedLate,
+  ]);
   return rows[0];
+}
+
+/**
+ * Return every assignment on this channel whose lifetime overlaps
+ * [periodStart, periodEnd]. Used by the revenue worker to find all
+ * articles that held the channel during a given AdSense reporting day.
+ *
+ * Overlap test:
+ *   asn.assigned_at < periodEnd
+ *   AND COALESCE(asn.unassigned_at, NOW()) > periodStart
+ *
+ * Returns assignments ordered by assigned_at ASC so callers can apply
+ * weights in chronological order.
+ */
+async function getAssignmentsOverlapping(channelDbId, periodStart, periodEnd) {
+  const sql = `
+    SELECT asn.id,
+           asn.article_id,
+           asn.channel_id,
+           asn.assigned_at,
+           asn.unassigned_at,
+           asn.status,
+           asn.pageviews_at_close,
+           art.direct_pageviews    AS article_pageviews_now,
+           art.article_id          AS article_ref
+      FROM assignments asn
+      JOIN articles    art ON art.id = asn.article_id
+     WHERE asn.channel_id = $1
+       AND asn.assigned_at < $3
+       AND COALESCE(asn.unassigned_at, NOW()) > $2
+     ORDER BY asn.assigned_at ASC`;
+  const { rows } = await pool.query(sql, [channelDbId, periodStart, periodEnd]);
+  return rows;
+}
+
+/**
+ * For a channel that has no active assignment but AdSense reports revenue:
+ * find the most-recently-closed assignment within `withinMs` (default 24h)
+ * before the period end. AdSense often reports impressions/clicks 24-48h
+ * after an article has expired — this captures the tail end of that revenue.
+ */
+async function getRecentlyClosedAssignment(channelDbId, referenceTs, withinMs = 24 * 60 * 60 * 1000) {
+  const sql = `
+    SELECT asn.id,
+           asn.article_id,
+           asn.channel_id,
+           asn.assigned_at,
+           asn.unassigned_at,
+           asn.pageviews_at_close,
+           art.article_id          AS article_ref
+      FROM assignments asn
+      JOIN articles    art ON art.id = asn.article_id
+     WHERE asn.channel_id    = $1
+       AND asn.unassigned_at IS NOT NULL
+       AND asn.unassigned_at <= $2::timestamptz
+       AND asn.unassigned_at >= ($2::timestamptz - ($3 || ' milliseconds')::interval)
+     ORDER BY asn.unassigned_at DESC
+     LIMIT 1`;
+  const { rows } = await pool.query(sql, [channelDbId, referenceTs, String(withinMs)]);
+  return rows[0] || null;
 }
 
 // Aliases for worker compatibility
@@ -867,6 +953,8 @@ module.exports = {
   getZeroRevenueArticles,
   closeAssignmentByArticle,
   upsertRevenueEvent,
+  getAssignmentsOverlapping,
+  getRecentlyClosedAssignment,
 
   // GA4 monitoring
   getArticlesForGaMonitor,
