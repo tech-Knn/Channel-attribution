@@ -51,9 +51,13 @@ async function listArticles({ status, category, dateFrom, dateTo, limit = 50, of
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  // Sort by most recent activity — newer of published_at or reactivated_at.
+  // Otherwise a recently-reactivated article (originally published weeks ago)
+  // would stay at the bottom of the list and the user can't see that the
+  // pageview-threshold reactivation actually fired.
   const sql = `
     SELECT * FROM articles ${where}
-    ORDER BY published_at DESC
+    ORDER BY GREATEST(published_at, COALESCE(reactivated_at, '-infinity'::timestamptz)) DESC
     LIMIT $${idx++} OFFSET $${idx++}`;
   params.push(limit, offset);
 
