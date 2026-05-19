@@ -743,7 +743,10 @@ async function getAssignmentRevenue({
   if (status)     { conditions.push(`assignment_status = $${idx++}`); params.push(status); }
   if (from)       { conditions.push(`assigned_at >= $${idx++}`); params.push(from); }
   if (to)         { conditions.push(`assigned_at < $${idx++}`); params.push(to); }
-  if (hideZero)   { conditions.push(`revenue > 0`); }
+  // hideZero only hides CLOSED assignments with no revenue. An active
+  // assignment that hasn't earned yet (newly reactivated, just-published)
+  // is meaningful state and must always be visible.
+  if (hideZero)   { conditions.push(`(revenue > 0 OR assignment_status = 'active')`); }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
