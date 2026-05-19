@@ -745,8 +745,12 @@ async function getAssignmentRevenue({
   if (channelId)  { conditions.push(`channel_id = $${idx++}`); params.push(String(channelId)); }
   if (articleId)  { conditions.push(`article_id = $${idx++}`); params.push(String(articleId)); }
   if (status)     { conditions.push(`assignment_status = $${idx++}`); params.push(status); }
-  if (from)       { conditions.push(`assigned_at >= $${idx++}`); params.push(from); }
-  if (to)         { conditions.push(`assigned_at < $${idx++}`); params.push(to); }
+  if (from)       { conditions.push(`assigned_at >= $${idx++}::date`); params.push(from); }
+  // Treat `to` as inclusive end-of-day. The frontend sends date-only
+  // strings like '2026-05-19'; without this, the filter excludes anything
+  // assigned later than 00:00 UTC on that day — including freshly-
+  // reactivated assignments created the same day the user is viewing.
+  if (to)         { conditions.push(`assigned_at < ($${idx++}::date + INTERVAL '1 day')`); params.push(to); }
   // hideZero only hides CLOSED assignments with no revenue. An active
   // assignment that hasn't earned yet (newly reactivated, just-published)
   // is meaningful state and must always be visible.
